@@ -25,10 +25,27 @@ export default function LoginPage() {
       setAuth(res.user, res.token);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError(err.message || "Login failed. Is the backend running?");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDemo = () => {
+    setAuth(
+      {
+        id: "demo-user-1",
+        email: "demo@example.com",
+        username: "demo",
+        display_name: "Demo User",
+        avatar_url: "",
+        preferred_language: "en",
+        status: "online",
+        bio: "Demo account",
+      },
+      "demo-token"
+    );
+    router.push("/dashboard");
   };
 
   return (
@@ -85,6 +102,23 @@ export default function LoginPage() {
             {isLoading ? "Logging in..." : "Log In"}
           </button>
         </form>
+
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDemo}
+          className="w-full rounded-lg border border-border py-3 font-medium transition-colors hover:bg-secondary"
+        >
+          Try Demo (no backend needed)
+        </button>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
