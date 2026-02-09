@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import calls, health, rooms, voice, websocket
+from app.routers import auth, calls, chats, friends, health, rooms, voice, websocket
 
 
 @asynccontextmanager
@@ -29,8 +29,8 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        description="Real-Time Voice Translation API",
-        version="0.1.0",
+        description="Real-Time Voice Translation Chat Platform",
+        version="0.2.0",
         lifespan=lifespan,
     )
 
@@ -45,6 +45,9 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
+    app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+    app.include_router(friends.router, prefix="/api/friends", tags=["friends"])
+    app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
     app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
     app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])

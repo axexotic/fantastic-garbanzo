@@ -5,9 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VoiceTranslate — Real-Time Voice Translation",
+  title: "VoiceTranslate — Chat Without Language Barriers",
   description:
-    "Speak your language. They hear theirs. Invisible AI-powered real-time voice translation.",
+    "Chat, call, and connect with anyone in any language. Real-time AI translation that feels invisible.",
 };
 
 export default function RootLayout({
@@ -17,8 +17,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={inter.className}>
-        <main className="min-h-screen">{children}</main>
+      <body className={`${inter.className} bg-background text-foreground`}>
+        {children}
       </body>
     </html>
   );
