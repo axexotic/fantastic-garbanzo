@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Phone, Video, X } from "lucide-react";
-import { rooms as roomsApi } from "@/lib/api";
+import { calls as callsApi } from "@/lib/api";
 
 interface StartCallModalProps {
   chatId: string;
@@ -18,15 +18,12 @@ export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProp
     setLoading(true);
     setError("");
     try {
-      const room = await roomsApi.create({
-        name: `${chatId}-${Date.now()}`,
-        max_participants: 10,
-      });
-      // Open call in new tab
-      window.open(`/call/${room.room_name}?type=${type}`, "_blank");
+      const call = await callsApi.start(chatId, type);
+      // Open call in new tab with callId for joining
+      window.open(`/call/${call.room_name}?callId=${call.id}&type=${type}`, "_blank");
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to create call");
+      setError(err.message || "Failed to start call");
     } finally {
       setLoading(false);
     }

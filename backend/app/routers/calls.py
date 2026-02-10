@@ -69,10 +69,17 @@ async def start_call(
             initiated_by=str(existing_call.initiated_by),
         )
 
+    # Count chat members to set max_participants for group calls
+    members_result = await db.execute(
+        select(ChatMember).where(ChatMember.chat_id == req.chat_id)
+    )
+    chat_members = members_result.scalars().all()
+    max_participants = max(len(chat_members), 2)
+
     # Create Daily.co room
     room_name = f"call-{uuid.uuid4().hex[:12]}"
     try:
-        room = await daily_service.create_room(room_name)
+        room = await daily_service.create_room(room_name, max_participants=max_participants)
         room_url = room.get("url", f"https://your-domain.daily.co/{room_name}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create call room: {e}")

@@ -213,8 +213,8 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
     setStartingCall(callType);
     try {
       const call = await callsApi.start(chatId, callType);
-      // Navigate to the call page
-      router.push(`/call/${call.room_name}?type=${callType}`);
+      // Navigate to the call page with callId for joining
+      router.push(`/call/${call.room_name}?callId=${call.id}&type=${callType}`);
     } catch (err: any) {
       console.error("Failed to start call:", err);
       alert(err.message || "Failed to start call");

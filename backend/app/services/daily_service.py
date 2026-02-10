@@ -25,8 +25,8 @@ class DailyService:
         payload: dict = {
             "properties": {
                 "max_participants": max_participants,
-                "enable_chat": False,
-                "enable_screenshare": False,
+                "enable_chat": True,
+                "enable_screenshare": True,
                 "enable_recording": "cloud" if enable_recording else None,
                 "exp": None,  # No expiry for MVP
             }
