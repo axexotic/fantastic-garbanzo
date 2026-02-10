@@ -7,9 +7,9 @@ ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --prefer-offline --no-audit --no-fund && npm cache clean --force
 COPY . .
-RUN npm run build
+RUN npm run build && rm -rf node_modules/.cache
 
 FROM node:20-alpine AS runner
 WORKDIR /app
