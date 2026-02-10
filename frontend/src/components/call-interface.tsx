@@ -57,6 +57,7 @@ function ParticipantTile({
       {isVideoOn ? (
         <DailyVideo
           sessionId={sessionId}
+          type="video"
           mirror={isLocal}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
