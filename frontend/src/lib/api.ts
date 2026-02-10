@@ -263,6 +263,7 @@ export interface CallInfo {
   chat_id: string;
   room_name: string;
   room_url: string;
+  token: string;
   call_type: "voice" | "video";
   status: string;
   initiated_by: string;
@@ -276,7 +277,7 @@ export const calls = {
     }),
 
   join: (callId: string) =>
-    request<{ token: string; room_url: string }>(`/api/calls/${callId}/join`, {
+    request<{ token: string; server_url: string; room_name: string }>(`/api/calls/${callId}/join`, {
       method: "POST",
     }),
 

@@ -29,9 +29,14 @@ class Settings(BaseSettings):
     # Anthropic (Translation — fallback)
     anthropic_api_key: str = ""
 
-    # Daily.co (WebRTC)
+    # Daily.co (WebRTC) — DEPRECATED, kept for reference
     daily_api_key: str = ""
     daily_api_url: str = "https://api.daily.co/v1"
+
+    # LiveKit (WebRTC)
+    livekit_url: str = "wss://localhost:7880"
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
 
     # AWS S3 (Voice storage)
     aws_access_key_id: str = ""

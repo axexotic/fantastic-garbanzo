@@ -13,7 +13,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
   const callId = searchParams.get("callId") || "";
   const callType = (searchParams.get("type") as "voice" | "video") || "voice";
 
-  const [roomUrl, setRoomUrl] = useState<string | null>(null);
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
     callsApi
       .join(callId)
       .then((data) => {
-        setRoomUrl(data.room_url);
+        setServerUrl(data.server_url);
         setToken(data.token);
       })
       .catch((err) => {
@@ -52,7 +52,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
     );
   }
 
-  if (!roomUrl || !token) {
+  if (!serverUrl || !token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -65,7 +65,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
 
   return (
     <CallInterface
-      roomUrl={roomUrl}
+      serverUrl={serverUrl}
       token={token}
       callId={callId}
       callType={callType}

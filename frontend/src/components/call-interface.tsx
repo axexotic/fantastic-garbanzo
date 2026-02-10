@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import DailyIframe, { DailyCall } from "@daily-co/daily-js";
 import {
-  DailyProvider,
-  DailyAudio,
-  DailyVideo,
-  useDaily,
+  LiveKitRoom,
+  VideoTrack,
+  AudioTrack,
   useLocalParticipant,
-  useParticipantIds,
-  useMeetingState,
-  useVideoTrack,
-  useAudioTrack,
-} from "@daily-co/daily-react";
+  useRemoteParticipants,
+  useTracks,
+  RoomAudioRenderer,
+  useConnectionState,
+} from "@livekit/components-react";
+import "@livekit/components-styles";
+import { Track, ConnectionState, RoomEvent } from "livekit-client";
 import {
   Loader2,
   Mic,
@@ -28,7 +28,7 @@ import { calls as callsApi } from "@/lib/api";
 /* ─── Props ─────────────────────────────────────────────── */
 
 interface CallInterfaceProps {
-  roomUrl: string;
+  serverUrl: string;
   token: string;
   callId: string;
   callType: "voice" | "video";
@@ -38,41 +38,28 @@ interface CallInterfaceProps {
 /* ─── Participant Video Tile ────────────────────────────── */
 
 function ParticipantTile({
-  sessionId,
+  trackRef,
   isLocal,
-  userName,
+  name,
 }: {
-  sessionId: string;
+  trackRef?: any;
   isLocal?: boolean;
-  userName?: string;
+  name: string;
 }) {
-  const videoTrack = useVideoTrack(sessionId);
-  const audioTrack = useAudioTrack(sessionId);
-  const isVideoOn = !videoTrack.isOff;
-
-  const label = isLocal ? "You" : userName || "Participant";
+  const label = isLocal ? "You" : name || "Participant";
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
-      {isVideoOn ? (
-        <DailyVideo
-          sessionId={sessionId}
-          type="video"
-          mirror={isLocal}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      {trackRef ? (
+        <VideoTrack
+          trackRef={trackRef}
+          style={{ width: "100%", height: "100%", objectFit: "cover", transform: isLocal ? "scaleX(-1)" : undefined }}
         />
       ) : (
         <div className="flex h-full items-center justify-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 text-2xl font-bold text-primary">
             {label.charAt(0).toUpperCase()}
           </div>
-        </div>
-      )}
-
-      {/* Muted badge */}
-      {audioTrack.isOff && (
-        <div className="absolute bottom-2 right-2 rounded-full bg-red-500/80 p-1">
-          <MicOff className="h-3 w-3 text-white" />
         </div>
       )}
 
@@ -84,7 +71,7 @@ function ParticipantTile({
   );
 }
 
-/* ─── Call Content (inside DailyProvider) ───────────────── */
+/* ─── Call Content (inside LiveKitRoom) ─────────────────── */
 
 function CallContent({
   callId,
@@ -96,19 +83,23 @@ function CallContent({
   onLeave?: () => void;
 }) {
   const router = useRouter();
-  const daily = useDaily();
-  const localParticipant = useLocalParticipant();
-  const participantIds = useParticipantIds();
-  const meetingState = useMeetingState();
+  const { localParticipant } = useLocalParticipant();
+  const remoteParticipants = useRemoteParticipants();
+  const connectionState = useConnectionState();
 
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(callType === "video");
   const [callDuration, setCallDuration] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Get video tracks
+  const videoTracks = useTracks([Track.Source.Camera], {
+    onlySubscribed: false,
+  });
+
   // Call timer
   useEffect(() => {
-    if (meetingState === "joined-meeting") {
+    if (connectionState === ConnectionState.Connected) {
       timerRef.current = setInterval(() => {
         setCallDuration((d) => d + 1);
       }, 1000);
@@ -116,28 +107,29 @@ function CallContent({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [meetingState]);
+  }, [connectionState]);
 
-  // Set camera on/off based on call type after joining
+  // Set camera on/off based on call type after connecting
   useEffect(() => {
-    if (daily && meetingState === "joined-meeting") {
-      daily.setLocalVideo(callType === "video");
+    if (localParticipant && connectionState === ConnectionState.Connected) {
+      localParticipant.setCameraEnabled(callType === "video");
+      localParticipant.setMicrophoneEnabled(true);
     }
-  }, [daily, meetingState, callType]);
+  }, [localParticipant, connectionState, callType]);
 
-  const toggleMute = useCallback(() => {
-    if (!daily) return;
+  const toggleMute = useCallback(async () => {
+    if (!localParticipant) return;
     const newMuted = !isMuted;
-    daily.setLocalAudio(!newMuted);
+    await localParticipant.setMicrophoneEnabled(!newMuted);
     setIsMuted(newMuted);
-  }, [daily, isMuted]);
+  }, [localParticipant, isMuted]);
 
-  const toggleVideo = useCallback(() => {
-    if (!daily) return;
+  const toggleVideo = useCallback(async () => {
+    if (!localParticipant) return;
     const newVideoOn = !isVideoOn;
-    daily.setLocalVideo(newVideoOn);
+    await localParticipant.setCameraEnabled(newVideoOn);
     setIsVideoOn(newVideoOn);
-  }, [daily, isVideoOn]);
+  }, [localParticipant, isVideoOn]);
 
   const handleLeave = useCallback(async () => {
     try {
@@ -145,18 +137,12 @@ function CallContent({
     } catch (e) {
       console.error("Failed to end call:", e);
     }
-    if (daily) {
-      try {
-        await daily.leave();
-        daily.destroy();
-      } catch {}
-    }
     if (onLeave) {
       onLeave();
     } else {
       router.push("/dashboard");
     }
-  }, [daily, callId, router, onLeave]);
+  }, [callId, router, onLeave]);
 
   const formatDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -164,12 +150,10 @@ function CallContent({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const remoteParticipantIds = participantIds.filter(
-    (id) => id !== localParticipant?.session_id
-  );
+  const totalParticipants = 1 + remoteParticipants.length;
 
   // Loading state
-  if (meetingState === "joining-meeting" || meetingState === "new") {
+  if (connectionState === ConnectionState.Connecting) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -180,8 +164,8 @@ function CallContent({
     );
   }
 
-  // Left / error state
-  if (meetingState === "left-meeting" || meetingState === "error") {
+  // Disconnected state
+  if (connectionState === ConnectionState.Disconnected) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -198,6 +182,11 @@ function CallContent({
     );
   }
 
+  // Get local video track
+  const localVideoTrack = videoTracks.find(
+    (t) => t.participant.identity === localParticipant?.identity
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* ─── Status Bar ─── */}
@@ -209,7 +198,7 @@ function CallContent({
           </span>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
-            {participantIds.length}
+            {totalParticipants}
           </span>
         </div>
         <span className="font-mono text-sm text-muted-foreground">
@@ -222,44 +211,55 @@ function CallContent({
         {callType === "video" ? (
           <div
             className={`grid w-full max-w-5xl gap-4 ${
-              participantIds.length <= 1
+              totalParticipants <= 1
                 ? "grid-cols-1 max-w-2xl"
-                : participantIds.length <= 4
+                : totalParticipants <= 4
                   ? "grid-cols-2"
                   : "grid-cols-3"
             }`}
           >
-            {localParticipant && (
-              <ParticipantTile
-                sessionId={localParticipant.session_id}
-                isLocal
-              />
-            )}
-            {remoteParticipantIds.map((id) => (
-              <ParticipantTile key={id} sessionId={id} />
-            ))}
+            {/* Local participant */}
+            <ParticipantTile
+              trackRef={localVideoTrack}
+              isLocal
+              name="You"
+            />
+            {/* Remote participants */}
+            {remoteParticipants.map((participant) => {
+              const remoteTrack = videoTracks.find(
+                (t) => t.participant.identity === participant.identity
+              );
+              return (
+                <ParticipantTile
+                  key={participant.identity}
+                  trackRef={remoteTrack}
+                  name={participant.name || participant.identity}
+                />
+              );
+            })}
           </div>
         ) : (
           /* Voice-only: show avatars + wave animation */
           <div className="flex flex-col items-center gap-8">
             <div className="flex flex-wrap justify-center gap-6">
-              {participantIds.map((id) => {
-                const isLocal = id === localParticipant?.session_id;
-                return (
-                  <div key={id} className="flex flex-col items-center gap-2">
-                    <div
-                      className={`flex h-20 w-20 items-center justify-center rounded-full text-xl font-bold ${
-                        isLocal ? "bg-primary/20 text-primary" : "bg-secondary text-foreground"
-                      }`}
-                    >
-                      {isLocal ? "You" : "P"}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {isLocal ? "You" : "Participant"}
-                    </span>
+              {/* Local */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 text-xl font-bold text-primary">
+                  You
+                </div>
+                <span className="text-xs text-muted-foreground">You</span>
+              </div>
+              {/* Remote */}
+              {remoteParticipants.map((p) => (
+                <div key={p.identity} className="flex flex-col items-center gap-2">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-xl font-bold text-foreground">
+                    {(p.name || p.identity).charAt(0).toUpperCase()}
                   </div>
-                );
-              })}
+                  <span className="text-xs text-muted-foreground">
+                    {p.name || p.identity}
+                  </span>
+                </div>
+              ))}
             </div>
             {/* Animated wave bars */}
             <div className="flex items-center gap-1">
@@ -278,8 +278,8 @@ function CallContent({
         )}
       </div>
 
-      {/* Hidden audio element for remote participants */}
-      <DailyAudio />
+      {/* Audio renderer for remote participants */}
+      <RoomAudioRenderer />
 
       {/* ─── Controls ─── */}
       <div className="flex items-center justify-center gap-6 border-t border-border py-6">
@@ -332,59 +332,46 @@ function CallContent({
   );
 }
 
-/* ─── Main Wrapper — creates Daily call object & provider ─ */
+/* ─── Main Wrapper — connect to LiveKit room ───────────── */
 
 export function CallInterface({
-  roomUrl,
+  serverUrl,
   token,
   callId,
   callType,
   onLeave,
 }: CallInterfaceProps) {
-  const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!roomUrl || !token) {
-      console.error("Missing roomUrl or token for Daily.co call");
-      return;
-    }
-
-    const co = DailyIframe.createCallObject({
-      url: roomUrl,
-      token,
-      startVideoOff: callType !== "video",
-      startAudioOff: false,
-    });
-
-    setCallObject(co);
-
-    co.join().catch((err: unknown) => {
-      console.error("Failed to join Daily.co room:", err);
-    });
-
-    return () => {
-      co.leave()
-        .then(() => co.destroy())
-        .catch(() => {});
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomUrl, token]);
-
-  if (!callObject) {
+  if (!serverUrl || !token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Initializing call...</p>
+          <PhoneOff className="h-10 w-10 text-muted-foreground" />
+          <p className="text-destructive">Missing server URL or token</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <DailyProvider callObject={callObject}>
+    <LiveKitRoom
+      serverUrl={serverUrl}
+      token={token}
+      connect={true}
+      audio={true}
+      video={callType === "video"}
+      onDisconnected={() => {
+        if (onLeave) onLeave();
+      }}
+    >
       <CallContent callId={callId} callType={callType} onLeave={onLeave} />
-    </DailyProvider>
+    </LiveKitRoom>
   );
 }

@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Call, CallParticipant, Chat, ChatMember, User
-from app.services.daily_service import daily_service
+from app.services.livekit_service import livekit_service
 
 router = APIRouter()
 
@@ -31,6 +31,7 @@ class CallResponse(BaseModel):
     call_type: str
     status: str
     initiated_by: str
+    token: str = ""
 
 
 @router.post("/start", response_model=CallResponse)
@@ -58,44 +59,46 @@ async def start_call(
     )
     existing_call = result.scalar_one_or_none()
     if existing_call:
-        # Return existing call instead of creating new one
+        # Generate a token for the user to join the existing call
+        token = livekit_service.create_token(
+            room_name=existing_call.room_name,
+            participant_identity=str(current_user.id),
+            participant_name=current_user.display_name,
+        )
         return CallResponse(
             id=str(existing_call.id),
             chat_id=str(existing_call.chat_id),
             room_name=existing_call.room_name,
-            room_url=existing_call.daily_room_url or "",
+            room_url=livekit_service.get_ws_url(),
             call_type=existing_call.call_type,
             status=existing_call.status,
             initiated_by=str(existing_call.initiated_by),
+            token=token,
         )
 
-    # Count chat members to set max_participants for group calls
-    members_result = await db.execute(
-        select(ChatMember).where(ChatMember.chat_id == req.chat_id)
-    )
-    chat_members = members_result.scalars().all()
-    max_participants = max(len(chat_members), 2)
-
-    # Create Daily.co room
+    # Create room name
     room_name = f"call-{uuid.uuid4().hex[:12]}"
-    try:
-        room = await daily_service.create_room(room_name, max_participants=max_participants)
-        room_url = room.get("url", f"https://your-domain.daily.co/{room_name}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create call room: {e}")
+
+    # Generate LiveKit token (room auto-creates on LiveKit server)
+    lk_url = livekit_service.get_ws_url()
+    token = livekit_service.create_token(
+        room_name=room_name,
+        participant_identity=str(current_user.id),
+        participant_name=current_user.display_name,
+    )
 
     # Create call record
     call = Call(
         chat_id=req.chat_id,
         room_name=room_name,
-        daily_room_url=room_url,
+        daily_room_url=lk_url,  # Reusing column for LiveKit URL
         call_type=req.call_type,
         status="ringing",
         initiated_by=current_user.id,
         started_at=datetime.utcnow(),
     )
     db.add(call)
-    await db.flush()  # Flush to assign call.id before creating participant
+    await db.flush()
 
     # Add initiator as participant
     participant = CallParticipant(
@@ -113,10 +116,11 @@ async def start_call(
         id=str(call.id),
         chat_id=str(call.chat_id),
         room_name=call.room_name,
-        room_url=call.daily_room_url or "",
+        room_url=lk_url,
         call_type=call.call_type,
         status=call.status,
         initiated_by=str(call.initiated_by),
+        token=token,
     )
 
 
@@ -142,11 +146,12 @@ async def join_call(
     if not membership:
         raise HTTPException(status_code=403, detail="Not a member of this chat")
 
-    # Get Daily.co meeting token
-    try:
-        token = await daily_service.get_meeting_token(call.room_name, str(current_user.id))
-    except Exception:
-        token = ""
+    # Generate LiveKit token
+    token = livekit_service.create_token(
+        room_name=call.room_name,
+        participant_identity=str(current_user.id),
+        participant_name=current_user.display_name,
+    )
 
     # Add/update participant
     result = await db.execute(
@@ -176,7 +181,7 @@ async def join_call(
 
     return {
         "token": token,
-        "room_url": call.daily_room_url,
+        "server_url": livekit_service.get_ws_url(),
         "room_name": call.room_name,
     }
 

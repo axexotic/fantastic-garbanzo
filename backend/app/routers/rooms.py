@@ -1,9 +1,11 @@
-"""Daily.co room management — create / join / list rooms."""
+"""Room management — create rooms and issue tokens via LiveKit."""
 
-from fastapi import APIRouter, HTTPException
+import uuid
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.services.daily_service import daily_service
+from app.services.livekit_service import livekit_service
 
 router = APIRouter()
 
@@ -22,28 +24,27 @@ class CreateRoomResponse(BaseModel):
 
 @router.post("/create", response_model=CreateRoomResponse)
 async def create_room(req: CreateRoomRequest):
-    """Create a Daily.co room and return a join token."""
-    try:
-        room = await daily_service.create_room(
-            name=req.name,
-            max_participants=req.max_participants,
-            enable_recording=req.enable_recording,
-        )
-        token = await daily_service.create_meeting_token(room["name"])
-        return CreateRoomResponse(
-            room_name=room["name"],
-            room_url=room["url"],
-            token=token,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Create a LiveKit room and return a join token."""
+    room_name = req.name or f"room-{uuid.uuid4().hex[:12]}"
+
+    token = livekit_service.create_token(
+        room_name=room_name,
+        participant_identity=f"host-{uuid.uuid4().hex[:8]}",
+        participant_name="Host",
+    )
+
+    return CreateRoomResponse(
+        room_name=room_name,
+        room_url=livekit_service.get_ws_url(),
+        token=token,
+    )
 
 
 @router.post("/{room_name}/token")
 async def get_room_token(room_name: str):
     """Get a meeting token for an existing room."""
-    try:
-        token = await daily_service.create_meeting_token(room_name)
-        return {"token": token}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    token = livekit_service.create_token(
+        room_name=room_name,
+        participant_identity=f"user-{uuid.uuid4().hex[:8]}",
+    )
+    return {"token": token}
