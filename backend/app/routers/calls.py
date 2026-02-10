@@ -95,6 +95,7 @@ async def start_call(
         started_at=datetime.utcnow(),
     )
     db.add(call)
+    await db.flush()  # Flush to assign call.id before creating participant
 
     # Add initiator as participant
     participant = CallParticipant(
