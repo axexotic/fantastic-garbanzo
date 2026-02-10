@@ -218,4 +218,73 @@ export const rooms = {
     request<{ token: string }>(`/api/rooms/${roomName}/token`, { method: "POST" }),
 };
 
-export default { auth, friends, chats, rooms };
+// ─── Voice Profile ─────────────────────────────────────────
+
+export interface VoiceProfile {
+  user_id: string;
+  voice_id: string;
+  status: "active" | "processing" | "failed";
+  created_at?: string;
+}
+
+export const voice = {
+  getProfile: () =>
+    request<VoiceProfile>("/api/voice/profile"),
+
+  cloneVoice: async (audioBlob: Blob): Promise<VoiceProfile> => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    const formData = new FormData();
+    formData.append("audio_file", audioBlob, "voice_sample.wav");
+
+    const res = await fetch(`${API_URL}/api/voice/clone`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(body.detail || res.statusText, res.status);
+    }
+
+    return res.json();
+  },
+
+  deleteProfile: () =>
+    request<{ success: boolean }>("/api/voice/profile", { method: "DELETE" }),
+};
+
+// ─── Calls ─────────────────────────────────────────────────
+
+export interface CallInfo {
+  id: string;
+  chat_id: string;
+  room_name: string;
+  room_url: string;
+  call_type: "voice" | "video";
+  status: string;
+  initiated_by: string;
+}
+
+export const calls = {
+  start: (chatId: string, callType: "voice" | "video" = "voice") =>
+    request<CallInfo>("/api/calls/start", {
+      method: "POST",
+      body: JSON.stringify({ chat_id: chatId, call_type: callType }),
+    }),
+
+  join: (callId: string) =>
+    request<{ token: string; room_url: string }>(`/api/calls/${callId}/join`, {
+      method: "POST",
+    }),
+
+  end: (callId: string) =>
+    request(`/api/calls/${callId}/end`, { method: "POST" }),
+
+  getActive: (chatId: string) =>
+    request<CallInfo | null>(`/api/calls/active/${chatId}`),
+};
+
+export default { auth, friends, chats, rooms, voice, calls };

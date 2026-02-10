@@ -41,3 +41,6 @@ voice_samples/
 *.wav
 *.mp3
 !frontend/public/sounds/*.mp3
+
+# Keys
+*.pem

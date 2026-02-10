@@ -13,13 +13,14 @@ import {
   Users,
 } from "lucide-react";
 import { useAuthStore, useChatStore, useFriendsStore } from "@/lib/store";
-import { chats as chatsApi, friends as friendsApi } from "@/lib/api";
+import { chats as chatsApi, friends as friendsApi, voice as voiceApi } from "@/lib/api";
 import { useSocket } from "@/hooks/use-socket";
 import { ChatList } from "@/components/chat-list";
 import { ChatView } from "@/components/chat-view";
 import { FriendsPanel } from "@/components/friends-panel";
 import { NewChatModal } from "@/components/new-chat-modal";
 import { SettingsPanel } from "@/components/settings-panel";
+import { VoiceSetupModal } from "@/components/voice-setup-modal";
 
 type SidePanel = "chats" | "friends" | "settings";
 
@@ -32,6 +33,7 @@ export default function DashboardPage() {
 
   const [sidePanel, setSidePanel] = useState<SidePanel>("chats");
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
 
   // Auth check
   useEffect(() => {
@@ -65,6 +67,31 @@ export default function DashboardPage() {
 
     loadData();
   }, [user, setChats, setFriends, setIncomingRequests]);
+
+  // Check voice profile after login
+  useEffect(() => {
+    if (!user) return;
+
+    const checkVoiceProfile = async () => {
+      // Check if user has skipped voice setup before
+      const skipped = localStorage.getItem("voice_setup_skipped");
+      const hasSeenSetup = localStorage.getItem("voice_setup_seen");
+
+      if (skipped || hasSeenSetup) return;
+
+      try {
+        // Check if voice profile exists
+        await voiceApi.getProfile();
+        // Profile exists, no need to show setup
+      } catch (err) {
+        // No voice profile - show setup modal for first-time users
+        setShowVoiceSetup(true);
+        localStorage.setItem("voice_setup_seen", "true");
+      }
+    };
+
+    checkVoiceProfile();
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -183,6 +210,14 @@ export default function DashboardPage() {
             setShowNewChat(false);
             setActiveChat(chatId);
           }}
+        />
+      )}
+
+      {/* ─── Voice Setup Modal ─── */}
+      {showVoiceSetup && (
+        <VoiceSetupModal
+          onClose={() => setShowVoiceSetup(false)}
+          onComplete={() => setShowVoiceSetup(false)}
         />
       )}
     </div>

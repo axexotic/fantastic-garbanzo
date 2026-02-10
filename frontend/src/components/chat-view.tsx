@@ -11,10 +11,11 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import { chats as chatsApi } from "@/lib/api";
+import { chats as chatsApi, calls as callsApi } from "@/lib/api";
 import type { ChatMessage, ChatPreview, UserProfile } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 import { ChatLanguageSelector } from "./chat-language-selector";
+import { useRouter } from "next/navigation";
 
 interface ChatViewProps {
   chatId: string;
@@ -73,6 +74,7 @@ function getMemberName(members: ChatPreview["members"], senderId: string) {
 export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const { chats, clearUnread } = useChatStore();
   const chat = chats.find((c) => c.id === chatId);
+  const router = useRouter();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -82,6 +84,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
+  const [startingCall, setStartingCall] = useState<"voice" | "video" | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -206,6 +209,20 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
     }
   };
 
+  const handleStartCall = async (callType: "voice" | "video") => {
+    setStartingCall(callType);
+    try {
+      const call = await callsApi.start(chatId, callType);
+      // Navigate to the call page
+      router.push(`/call/${call.room_name}?type=${callType}`);
+    } catch (err: any) {
+      console.error("Failed to start call:", err);
+      alert(err.message || "Failed to start call");
+    } finally {
+      setStartingCall(null);
+    }
+  };
+
   const toggleOriginal = (msgId: string) => {
     setShowOriginal((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
   };
@@ -280,11 +297,29 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
             <Globe className="h-5 w-5" />
             <span className="sr-only">Language</span>
           </button>
-          <button className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" title="Voice call">
-            <Phone className="h-5 w-5" />
+          <button 
+            onClick={() => handleStartCall("voice")}
+            disabled={!!startingCall}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50" 
+            title="Voice call"
+          >
+            {startingCall === "voice" ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Phone className="h-5 w-5" />
+            )}
           </button>
-          <button className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" title="Video call">
-            <Video className="h-5 w-5" />
+          <button 
+            onClick={() => handleStartCall("video")}
+            disabled={!!startingCall}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50" 
+            title="Video call"
+          >
+            {startingCall === "video" ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Video className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>

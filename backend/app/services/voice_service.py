@@ -66,6 +66,27 @@ class VoiceService:
         profile = await self.get_profile(user_id)
         return profile.get("voice_id") if profile else None
 
+    async def delete_profile(self, user_id: str) -> bool:
+        """Delete voice profile for a user."""
+        settings = get_settings()
+        profile = await self.get_profile(user_id)
+
+        if profile and profile.get("voice_id"):
+            # Delete from ElevenLabs
+            try:
+                headers = {"xi-api-key": settings.elevenlabs_api_key}
+                async with httpx.AsyncClient(timeout=30) as client:
+                    await client.delete(
+                        f"{self.BASE_URL}/voices/{profile['voice_id']}",
+                        headers=headers,
+                    )
+            except Exception:
+                pass  # Voice might already be deleted on ElevenLabs
+
+        # Delete from Redis cache
+        await redis_service.delete(f"voice_profile:{user_id}")
+        return True
+
 
 # Singleton
 voice_service = VoiceService()

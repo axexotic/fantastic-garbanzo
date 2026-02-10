@@ -74,6 +74,39 @@ class DailyService:
             data = resp.json()
             return data["token"]
 
+    async def get_meeting_token(
+        self,
+        room_name: str,
+        user_id: str,
+        is_owner: bool = False,
+    ) -> str:
+        """Create a meeting token for a specific user."""
+        settings = get_settings()
+
+        headers = {
+            "Authorization": f"Bearer {settings.daily_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "properties": {
+                "room_name": room_name,
+                "is_owner": is_owner,
+                "user_id": user_id,
+                "user_name": f"user_{user_id[:8]}",
+            }
+        }
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{settings.daily_api_url}/meeting-tokens",
+                headers=headers,
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["token"]
+
     async def delete_room(self, room_name: str) -> None:
         """Delete a Daily.co room."""
         settings = get_settings()
