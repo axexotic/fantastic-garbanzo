@@ -1,6 +1,6 @@
 """Chat router — create chats, list chats, send messages, group management."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -315,7 +315,7 @@ async def get_messages(
     messages = result.scalars().all()
 
     # Mark as read
-    membership.last_read_at = datetime.now(timezone.utc)
+    membership.last_read_at = datetime.utcnow()
     await db.commit()
 
     return [format_message(m, membership.language) for m in reversed(messages)]
@@ -370,8 +370,8 @@ async def send_message(
     db.add(message)
 
     # Update chat timestamp
-    chat.updated_at = datetime.now(timezone.utc)
-    membership.last_read_at = datetime.now(timezone.utc)
+    chat.updated_at = datetime.utcnow()
+    membership.last_read_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(message)

@@ -1,6 +1,6 @@
 """Friends router — send/accept/reject requests, list friends, unfriend."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -131,7 +131,7 @@ async def accept_friend_request(
         raise HTTPException(status_code=404, detail="Request not found")
 
     req.status = "accepted"
-    req.responded_at = datetime.now(timezone.utc)
+    req.responded_at = datetime.utcnow()
 
     # Create bidirectional friendship
     db.add(Friendship(user_id=req.sender_id, friend_id=req.receiver_id))
@@ -160,7 +160,7 @@ async def reject_friend_request(
         raise HTTPException(status_code=404, detail="Request not found")
 
     req.status = "rejected"
-    req.responded_at = datetime.now(timezone.utc)
+    req.responded_at = datetime.utcnow()
     await db.commit()
     return {"status": "rejected"}
 

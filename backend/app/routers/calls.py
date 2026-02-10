@@ -1,7 +1,7 @@
 """Call history & management endpoints."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -85,7 +85,7 @@ async def start_call(
         call_type=req.call_type,
         status="ringing",
         initiated_by=current_user.id,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.utcnow(),
     )
     db.add(call)
 
@@ -95,7 +95,7 @@ async def start_call(
         user_id=current_user.id,
         language=membership.language or current_user.preferred_language,
         status="joined",
-        joined_at=datetime.now(timezone.utc),
+        joined_at=datetime.utcnow(),
     )
     db.add(participant)
 
@@ -149,14 +149,14 @@ async def join_call(
     participant = result.scalar_one_or_none()
     if participant:
         participant.status = "joined"
-        participant.joined_at = datetime.now(timezone.utc)
+        participant.joined_at = datetime.utcnow()
     else:
         participant = CallParticipant(
             call_id=call.id,
             user_id=current_user.id,
             language=membership.language or current_user.preferred_language,
             status="joined",
-            joined_at=datetime.now(timezone.utc),
+            joined_at=datetime.utcnow(),
         )
         db.add(participant)
 
@@ -187,11 +187,11 @@ async def end_call(
 
     # Calculate duration
     if call.started_at:
-        duration = (datetime.now(timezone.utc) - call.started_at.replace(tzinfo=timezone.utc)).total_seconds()
+        duration = (datetime.utcnow() - call.started_at).total_seconds()
         call.duration_seconds = duration
 
     call.status = "completed"
-    call.ended_at = datetime.now(timezone.utc)
+    call.ended_at = datetime.utcnow()
 
     await db.commit()
 

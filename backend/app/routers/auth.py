@@ -1,6 +1,6 @@
 """Auth router — signup, login, me."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
@@ -108,7 +108,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     # Update status
     user.status = "online"
-    user.last_seen_at = datetime.now(timezone.utc)
+    user.last_seen_at = datetime.utcnow()
     await db.commit()
 
     token = create_access_token(str(user.id))

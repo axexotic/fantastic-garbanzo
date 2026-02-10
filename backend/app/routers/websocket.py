@@ -33,7 +33,7 @@ Protocol (JSON messages):
 import base64
 import json
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -152,7 +152,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
         # Update status
         user.status = "online"
-        user.last_seen_at = datetime.now(timezone.utc)
+        user.last_seen_at = datetime.utcnow()
         await db.commit()
 
     await manager.connect(user_id, websocket)
@@ -247,7 +247,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             user = result.scalar_one_or_none()
             if user and not manager.is_online(user_id):
                 user.status = "offline"
-                user.last_seen_at = datetime.now(timezone.utc)
+                user.last_seen_at = datetime.utcnow()
                 await db.commit()
         await _broadcast_presence(user_id, "offline")
 
@@ -309,8 +309,8 @@ async def _handle_chat_message(user_id: str, msg: dict, websocket: WebSocket):
             reply_to_id=reply_to_id,
         )
         db.add(message)
-        chat.updated_at = datetime.now(timezone.utc)
-        sender_membership.last_read_at = datetime.now(timezone.utc)
+        chat.updated_at = datetime.utcnow()
+        sender_membership.last_read_at = datetime.utcnow()
         await db.commit()
         await db.refresh(message)
 
