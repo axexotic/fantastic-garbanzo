@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "VoiceTranslate — Chat Without Language Barriers",
   description:
     "Chat, call, and connect with anyone in any language. Real-time AI translation that feels invisible.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

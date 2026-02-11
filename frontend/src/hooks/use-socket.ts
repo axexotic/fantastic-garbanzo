@@ -1,5 +1,8 @@
 /**
  * WebSocket hook for real-time chat, presence, and notifications.
+ *
+ * Uses refs for state-dependent values so the connect callback
+ * only changes when the token changes, preventing reconnect loops.
  */
 
 "use client";
@@ -21,6 +24,15 @@ export function useSocket() {
   const activeChatId = useChatStore((s) => s.activeChatId);
   const updateFriendStatus = useFriendsStore((s) => s.updateFriendStatus);
 
+  // Keep latest values in refs so connect() callback stays stable
+  const activeChatIdRef = useRef(activeChatId);
+  const incrementUnreadRef = useRef(incrementUnread);
+  const updateFriendStatusRef = useRef(updateFriendStatus);
+
+  useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
+  useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
+  useEffect(() => { updateFriendStatusRef.current = updateFriendStatus; }, [updateFriendStatus]);
+
   const connect = useCallback(() => {
     if (!token) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -36,15 +48,15 @@ export function useSocket() {
         const msg = JSON.parse(event.data);
         const type = msg.type;
 
-        // Built-in handlers
+        // Built-in handlers — read from refs to avoid stale closures
         if (type === "presence") {
-          updateFriendStatus(msg.data.user_id, msg.data.status);
+          updateFriendStatusRef.current(msg.data.user_id, msg.data.status);
         }
 
         if (type === "new_message") {
           // If not viewing this chat, increment unread
-          if (msg.data.chat_id !== activeChatId) {
-            incrementUnread(msg.data.chat_id);
+          if (msg.data.chat_id !== activeChatIdRef.current) {
+            incrementUnreadRef.current(msg.data.chat_id);
           }
         }
 
@@ -65,6 +77,7 @@ export function useSocket() {
     };
 
     ws.onclose = () => {
+      wsRef.current = null;
       console.log("🔌 WebSocket disconnected, reconnecting in 3s...");
       reconnectRef.current = setTimeout(connect, 3000);
     };
@@ -74,12 +87,18 @@ export function useSocket() {
     };
 
     wsRef.current = ws;
-  }, [token, activeChatId, incrementUnread, updateFriendStatus]);
+  }, [token]); // only reconnect when token changes
 
   const disconnect = useCallback(() => {
-    if (reconnectRef.current) clearTimeout(reconnectRef.current);
-    wsRef.current?.close();
-    wsRef.current = null;
+    if (reconnectRef.current) {
+      clearTimeout(reconnectRef.current);
+      reconnectRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.onclose = null; // prevent reconnect on intentional close
+      wsRef.current.close();
+      wsRef.current = null;
+    }
   }, []);
 
   // Auto-connect on mount, reconnect on token change
