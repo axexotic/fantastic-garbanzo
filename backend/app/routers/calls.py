@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -14,6 +14,12 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Call, CallParticipant, Chat, ChatMember, User
 from app.services.livekit_service import livekit_service
+from app.routers.websocket import (
+    notify_incoming_call,
+    notify_call_ended,
+    notify_participant_joined,
+    notify_participant_left,
+)
 
 router = APIRouter()
 
@@ -112,6 +118,17 @@ async def start_call(
 
     await db.commit()
 
+    # Notify other chat members about the incoming call
+    await notify_incoming_call(
+        chat_id=str(call.chat_id),
+        call_id=str(call.id),
+        room_name=call.room_name,
+        call_type=call.call_type,
+        initiated_by=str(current_user.id),
+        initiator_name=current_user.display_name,
+        exclude_user=str(current_user.id),
+    )
+
     return CallResponse(
         id=str(call.id),
         chat_id=str(call.chat_id),
@@ -179,6 +196,22 @@ async def join_call(
 
     await db.commit()
 
+    # Count active participants for notification
+    active_count_result = await db.execute(
+        select(func.count(CallParticipant.id))
+        .where(CallParticipant.call_id == call.id, CallParticipant.status == "joined")
+    )
+    active_count = active_count_result.scalar() or 0
+
+    # Notify others that a participant joined
+    await notify_participant_joined(
+        chat_id=str(call.chat_id),
+        call_id=str(call.id),
+        user_id=str(current_user.id),
+        display_name=current_user.display_name,
+        participant_count=active_count,
+    )
+
     return {
         "token": token,
         "server_url": livekit_service.get_ws_url(),
@@ -208,7 +241,136 @@ async def end_call(
 
     await db.commit()
 
+    # Notify all members that the call ended
+    await notify_call_ended(
+        chat_id=str(call.chat_id),
+        call_id=str(call.id),
+        ended_by=str(current_user.id),
+        duration_seconds=call.duration_seconds or 0,
+    )
+
     return {"success": True, "duration_seconds": call.duration_seconds}
+
+
+@router.post("/{call_id}/leave")
+async def leave_call(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Leave a call without ending it (for group calls)."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Update participant status
+    result = await db.execute(
+        select(CallParticipant)
+        .where(CallParticipant.call_id == call.id, CallParticipant.user_id == current_user.id)
+    )
+    participant = result.scalar_one_or_none()
+    if participant:
+        participant.status = "left"
+        participant.left_at = datetime.utcnow()
+
+    await db.commit()
+
+    # Count remaining active participants
+    active_result = await db.execute(
+        select(func.count(CallParticipant.id))
+        .where(CallParticipant.call_id == call.id, CallParticipant.status == "joined")
+    )
+    remaining = active_result.scalar() or 0
+
+    # Notify others
+    await notify_participant_left(
+        chat_id=str(call.chat_id),
+        call_id=str(call.id),
+        user_id=str(current_user.id),
+        display_name=current_user.display_name,
+        participant_count=remaining,
+    )
+
+    # Auto-end call if no participants left
+    if remaining == 0:
+        if call.started_at:
+            call.duration_seconds = (datetime.utcnow() - call.started_at).total_seconds()
+        call.status = "completed"
+        call.ended_at = datetime.utcnow()
+        await db.commit()
+
+        await notify_call_ended(
+            chat_id=str(call.chat_id),
+            call_id=str(call.id),
+            ended_by=str(current_user.id),
+            duration_seconds=call.duration_seconds or 0,
+        )
+
+    return {"success": True, "remaining_participants": remaining}
+
+
+@router.post("/{call_id}/decline")
+async def decline_call(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Decline an incoming call."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Update participant to declined
+    result = await db.execute(
+        select(CallParticipant)
+        .where(CallParticipant.call_id == call.id, CallParticipant.user_id == current_user.id)
+    )
+    participant = result.scalar_one_or_none()
+    if participant:
+        participant.status = "declined"
+    else:
+        db.add(CallParticipant(
+            call_id=call.id,
+            user_id=current_user.id,
+            language=current_user.preferred_language,
+            status="declined",
+        ))
+
+    await db.commit()
+    return {"success": True}
+
+
+@router.get("/{call_id}/participants")
+async def get_call_participants(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all participants in a call with their status."""
+    result = await db.execute(
+        select(CallParticipant)
+        .options(selectinload(CallParticipant.user))
+        .where(CallParticipant.call_id == call_id)
+    )
+    participants = result.scalars().all()
+
+    return {
+        "participants": [
+            {
+                "user_id": str(p.user_id),
+                "display_name": p.user.display_name if p.user else "Unknown",
+                "username": p.user.username if p.user else "",
+                "language": p.language,
+                "status": p.status,
+                "joined_at": p.joined_at.isoformat() if p.joined_at else None,
+            }
+            for p in participants
+        ],
+        "total": len(participants),
+        "active": sum(1 for p in participants if p.status == "joined"),
+    }
 
 
 @router.get("/active/{chat_id}")

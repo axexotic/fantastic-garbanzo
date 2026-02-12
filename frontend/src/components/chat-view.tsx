@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { chats as chatsApi, calls as callsApi } from "@/lib/api";
 import type { ChatMessage, ChatPreview, UserProfile } from "@/lib/api";
-import { useChatStore } from "@/lib/store";
+import { useChatStore, useCallStore } from "@/lib/store";
 import { ChatLanguageSelector } from "./chat-language-selector";
+import { ActiveCallBanner } from "./active-call-banner";
+import { GroupSettings } from "./group-settings";
 import { useRouter } from "next/navigation";
 
 interface ChatViewProps {
@@ -73,7 +75,9 @@ function getMemberName(members: ChatPreview["members"], senderId: string) {
 
 export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const { chats, clearUnread } = useChatStore();
+  const { activeCalls } = useCallStore();
   const chat = chats.find((c) => c.id === chatId);
+  const activeCall = activeCalls.get(chatId);
   const router = useRouter();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -85,6 +89,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
   const [startingCall, setStartingCall] = useState<"voice" | "video" | null>(null);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -213,8 +218,9 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
     setStartingCall(callType);
     try {
       const call = await callsApi.start(chatId, callType);
-      // Navigate to the call page with callId for joining
-      router.push(`/call/${call.room_name}?callId=${call.id}&type=${callType}`);
+      const isGroup = chat?.chat_type === "group";
+      const name = encodeURIComponent(chatName);
+      router.push(`/call/${call.room_name}?callId=${call.id}&type=${callType}&chatName=${name}&group=${isGroup}`);
     } catch (err: any) {
       console.error("Failed to start call:", err);
       alert(err.message || "Failed to start call");
@@ -321,6 +327,15 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
               <Video className="h-5 w-5" />
             )}
           </button>
+          {chat.chat_type === "group" && (
+            <button
+              onClick={() => setShowGroupSettings(true)}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              title="Group settings"
+            >
+              <Settings2 className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -331,6 +346,11 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           currentLanguage={myLanguage}
           onClose={() => setShowLangSelector(false)}
         />
+      )}
+
+      {/* Active Call Banner */}
+      {activeCall && (
+        <ActiveCallBanner call={activeCall} />
       )}
 
       {/* ─── Messages ─── */}
@@ -501,6 +521,21 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           {LANG_NAMES[myLanguage] || myLanguage}
         </p>
       </div>
+
+      {/* Group Settings Modal */}
+      {showGroupSettings && chat.chat_type === "group" && (
+        <GroupSettings
+          chat={chat}
+          currentUserId={currentUser.id}
+          onClose={() => setShowGroupSettings(false)}
+          onUpdated={() => {
+            setShowGroupSettings(false);
+          }}
+          onLeft={() => {
+            setShowGroupSettings(false);
+          }}
+        />
+      )}
     </div>
   );
 }

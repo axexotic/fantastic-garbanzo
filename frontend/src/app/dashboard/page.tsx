@@ -12,7 +12,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { useAuthStore, useChatStore, useFriendsStore } from "@/lib/store";
+import { useAuthStore, useChatStore, useFriendsStore, useCallStore } from "@/lib/store";
 import { chats as chatsApi, friends as friendsApi, voice as voiceApi } from "@/lib/api";
 import { useSocket } from "@/hooks/use-socket";
 import { ChatList } from "@/components/chat-list";
@@ -21,6 +21,7 @@ import { FriendsPanel } from "@/components/friends-panel";
 import { NewChatModal } from "@/components/new-chat-modal";
 import { SettingsPanel } from "@/components/settings-panel";
 import { VoiceSetupModal } from "@/components/voice-setup-modal";
+import { IncomingCallModal } from "@/components/incoming-call-modal";
 
 type SidePanel = "chats" | "friends" | "settings";
 
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const { user, isLoading, loadFromStorage, logout } = useAuthStore();
   const { chats, setChats, activeChatId, setActiveChat } = useChatStore();
   const { setFriends, setIncomingRequests } = useFriendsStore();
+  const { incomingCall, setIncomingCall } = useCallStore();
   const socket = useSocket();
 
   const [sidePanel, setSidePanel] = useState<SidePanel>("chats");
@@ -218,6 +220,14 @@ export default function DashboardPage() {
         <VoiceSetupModal
           onClose={() => setShowVoiceSetup(false)}
           onComplete={() => setShowVoiceSetup(false)}
+        />
+      )}
+
+      {/* ─── Incoming Call Modal ─── */}
+      {incomingCall && (
+        <IncomingCallModal
+          call={incomingCall}
+          onDismiss={() => setIncomingCall(null)}
         />
       )}
     </div>

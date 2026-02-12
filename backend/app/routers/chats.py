@@ -12,6 +12,7 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Chat, ChatMember, Friendship, Message, User
 from app.services.translation_service import translation_service
+from app.routers.websocket import notify_group_update
 
 router = APIRouter()
 
@@ -402,6 +403,21 @@ async def update_group(
         chat.avatar_url = body.avatar_url
 
     await db.commit()
+
+    # Notify members about the group update
+    await notify_group_update(
+        chat_id=chat_id,
+        event_type="group_updated",
+        data={
+            "chat_id": chat_id,
+            "name": chat.name,
+            "avatar_url": chat.avatar_url,
+            "updated_by": str(current_user.id),
+            "updated_by_name": current_user.display_name,
+        },
+        exclude_user=str(current_user.id),
+    )
+
     return {"status": "updated"}
 
 
@@ -432,10 +448,24 @@ async def add_members(
                     language=user.preferred_language,
                     role="member",
                 ))
-                added.append(uid)
+                added.append({"id": uid, "display_name": user.display_name})
 
     await db.commit()
-    return {"added": added}
+
+    # Notify existing members about new members
+    if added:
+        await notify_group_update(
+            chat_id=chat_id,
+            event_type="members_added",
+            data={
+                "chat_id": chat_id,
+                "added_members": added,
+                "added_by": str(current_user.id),
+                "added_by_name": current_user.display_name,
+            },
+        )
+
+    return {"added": [m["id"] for m in added]}
 
 
 @router.delete("/{chat_id}/members/{user_id}")
@@ -458,9 +488,28 @@ async def remove_member(
         )
     )
     target = result.scalar_one_or_none()
+    removed_name = ""
     if target:
+        # Get the user name before deleting
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        removed_user = user_result.scalar_one_or_none()
+        removed_name = removed_user.display_name if removed_user else ""
         await db.delete(target)
         await db.commit()
+
+        # Notify remaining members
+        is_self_leave = str(current_user.id) == user_id
+        await notify_group_update(
+            chat_id=chat_id,
+            event_type="member_left" if is_self_leave else "member_removed",
+            data={
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "display_name": removed_name,
+                "removed_by": str(current_user.id) if not is_self_leave else None,
+                "removed_by_name": current_user.display_name if not is_self_leave else None,
+            },
+        )
 
     return {"status": "removed"}
 
@@ -479,3 +528,116 @@ async def set_chat_language(
     membership.language = body.language
     await db.commit()
     return {"status": "updated", "language": body.language}
+
+
+# ─── Leave Group ────────────────────────────────────────────
+
+@router.post("/{chat_id}/leave")
+async def leave_group(
+    chat_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Leave a group chat. If the last admin leaves, promote the oldest member."""
+    chat, membership = await get_chat_with_access(chat_id, current_user.id, db)
+
+    if chat.chat_type != "group":
+        raise HTTPException(status_code=400, detail="Can only leave group chats")
+
+    is_admin = membership.role == "admin"
+
+    # If admin leaving, check if there are other admins
+    if is_admin:
+        admin_result = await db.execute(
+            select(ChatMember).where(
+                ChatMember.chat_id == chat_id,
+                ChatMember.role == "admin",
+                ChatMember.user_id != current_user.id,
+            )
+        )
+        other_admins = admin_result.scalars().all()
+
+        if not other_admins:
+            # Promote the oldest non-admin member
+            member_result = await db.execute(
+                select(ChatMember)
+                .where(
+                    ChatMember.chat_id == chat_id,
+                    ChatMember.user_id != current_user.id,
+                )
+                .order_by(ChatMember.joined_at.asc())
+                .limit(1)
+            )
+            new_admin = member_result.scalar_one_or_none()
+            if new_admin:
+                new_admin.role = "admin"
+
+    await db.delete(membership)
+    await db.commit()
+
+    # Notify remaining members
+    await notify_group_update(
+        chat_id=chat_id,
+        event_type="member_left",
+        data={
+            "chat_id": chat_id,
+            "user_id": str(current_user.id),
+            "display_name": current_user.display_name,
+        },
+    )
+
+    return {"status": "left"}
+
+
+# ─── Transfer Admin ─────────────────────────────────────────
+
+class TransferAdminRequest(BaseModel):
+    user_id: str
+
+
+@router.post("/{chat_id}/transfer-admin")
+async def transfer_admin(
+    chat_id: str,
+    body: TransferAdminRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Transfer admin role to another member."""
+    chat, membership = await get_chat_with_access(chat_id, current_user.id, db)
+
+    if chat.chat_type != "group":
+        raise HTTPException(status_code=400, detail="Only for group chats")
+    if membership.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    target_result = await db.execute(
+        select(ChatMember).where(
+            ChatMember.chat_id == chat_id,
+            ChatMember.user_id == body.user_id,
+        )
+    )
+    target = target_result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    target.role = "admin"
+    membership.role = "member"
+    await db.commit()
+
+    # Get target user name
+    user_result = await db.execute(select(User).where(User.id == body.user_id))
+    target_user = user_result.scalar_one_or_none()
+
+    await notify_group_update(
+        chat_id=chat_id,
+        event_type="admin_transferred",
+        data={
+            "chat_id": chat_id,
+            "new_admin_id": body.user_id,
+            "new_admin_name": target_user.display_name if target_user else "",
+            "previous_admin_id": str(current_user.id),
+            "previous_admin_name": current_user.display_name,
+        },
+    )
+
+    return {"status": "transferred"}

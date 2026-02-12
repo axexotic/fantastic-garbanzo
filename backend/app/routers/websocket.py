@@ -124,6 +124,100 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+# ─── Call Notification Helpers ──────────────────────────────
+
+async def notify_incoming_call(
+    chat_id: str,
+    call_id: str,
+    room_name: str,
+    call_type: str,
+    initiated_by: str,
+    initiator_name: str,
+    exclude_user: str = "",
+):
+    """Notify all chat members about an incoming call."""
+    await manager.notify_chat_members(
+        chat_id,
+        {
+            "type": "incoming_call",
+            "data": {
+                "call_id": call_id,
+                "chat_id": chat_id,
+                "room_name": room_name,
+                "call_type": call_type,
+                "initiated_by": initiated_by,
+                "initiator_name": initiator_name,
+            },
+        },
+        exclude_user=exclude_user,
+    )
+
+
+async def notify_call_ended(chat_id: str, call_id: str, ended_by: str, duration_seconds: float):
+    """Notify all chat members that a call has ended."""
+    await manager.notify_chat_members(
+        chat_id,
+        {
+            "type": "call_ended",
+            "data": {
+                "call_id": call_id,
+                "chat_id": chat_id,
+                "ended_by": ended_by,
+                "duration_seconds": duration_seconds,
+            },
+        },
+    )
+
+
+async def notify_participant_joined(
+    chat_id: str, call_id: str, user_id: str, display_name: str, participant_count: int
+):
+    """Notify members that someone joined the call."""
+    await manager.notify_chat_members(
+        chat_id,
+        {
+            "type": "participant_joined",
+            "data": {
+                "call_id": call_id,
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "display_name": display_name,
+                "participant_count": participant_count,
+            },
+        },
+    )
+
+
+async def notify_participant_left(
+    chat_id: str, call_id: str, user_id: str, display_name: str, participant_count: int
+):
+    """Notify members that someone left the call."""
+    await manager.notify_chat_members(
+        chat_id,
+        {
+            "type": "participant_left",
+            "data": {
+                "call_id": call_id,
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "display_name": display_name,
+                "participant_count": participant_count,
+            },
+        },
+    )
+
+
+async def notify_group_update(
+    chat_id: str, event_type: str, data: dict, exclude_user: str = ""
+):
+    """Notify chat members about group changes (member added/removed, renamed)."""
+    await manager.notify_chat_members(
+        chat_id,
+        {"type": event_type, "data": data},
+        exclude_user=exclude_user,
+    )
+
+
 # ─── Main WebSocket Endpoint ───────────────────────────────
 
 @router.websocket("/ws/{token}")
@@ -227,6 +321,25 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                             "type": result["type"],
                             "data": result["data"],
                         })
+
+            # ── Call Events ──
+            elif msg_type == "call_decline":
+                call_id = msg.get("call_id", "")
+                chat_id = msg.get("chat_id", "")
+                if chat_id:
+                    await manager.notify_chat_members(
+                        chat_id,
+                        {
+                            "type": "call_declined",
+                            "data": {
+                                "call_id": call_id,
+                                "chat_id": chat_id,
+                                "user_id": user_id,
+                                "username": username,
+                            },
+                        },
+                        exclude_user=user_id,
+                    )
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})

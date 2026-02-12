@@ -12,6 +12,8 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
 
   const callId = searchParams.get("callId") || "";
   const callType = (searchParams.get("type") as "voice" | "video") || "voice";
+  const chatName = searchParams.get("chatName") || "Call";
+  const isGroupCall = searchParams.get("group") === "true";
 
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -69,6 +71,8 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
       token={token}
       callId={callId}
       callType={callType}
+      chatName={chatName}
+      isGroupCall={isGroupCall}
     />
   );
 }

@@ -132,3 +132,61 @@ export const useFriendsStore = create<FriendsState>((set) => ({
       friends: state.friends.filter((f) => f.id !== userId),
     })),
 }));
+
+// ─── Call Store ────────────────────────────────────────────
+
+export interface IncomingCallData {
+  call_id: string;
+  chat_id: string;
+  room_name: string;
+  call_type: "voice" | "video";
+  initiated_by: string;
+  initiator_name: string;
+}
+
+export interface ActiveCallData {
+  call_id: string;
+  chat_id: string;
+  room_name: string;
+  call_type: "voice" | "video";
+  participant_count: number;
+}
+
+interface CallState {
+  incomingCall: IncomingCallData | null;
+  activeCalls: Map<string, ActiveCallData>;  // chat_id -> call data
+  setIncomingCall: (call: IncomingCallData | null) => void;
+  setActiveCall: (chatId: string, call: ActiveCallData | null) => void;
+  updateParticipantCount: (chatId: string, count: number) => void;
+  clearAllCalls: () => void;
+}
+
+export const useCallStore = create<CallState>((set) => ({
+  incomingCall: null,
+  activeCalls: new Map(),
+
+  setIncomingCall: (call) => set({ incomingCall: call }),
+
+  setActiveCall: (chatId, call) =>
+    set((state) => {
+      const next = new Map(state.activeCalls);
+      if (call) {
+        next.set(chatId, call);
+      } else {
+        next.delete(chatId);
+      }
+      return { activeCalls: next };
+    }),
+
+  updateParticipantCount: (chatId, count) =>
+    set((state) => {
+      const next = new Map(state.activeCalls);
+      const existing = next.get(chatId);
+      if (existing) {
+        next.set(chatId, { ...existing, participant_count: count });
+      }
+      return { activeCalls: next };
+    }),
+
+  clearAllCalls: () => set({ incomingCall: null, activeCalls: new Map() }),
+}));

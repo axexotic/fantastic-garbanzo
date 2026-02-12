@@ -203,6 +203,15 @@ export const chats = {
 
   updateGroup: (chatId: string, data: { name?: string; avatar_url?: string }) =>
     request(`/api/chats/${chatId}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  leaveGroup: (chatId: string) =>
+    request(`/api/chats/${chatId}/leave`, { method: "POST" }),
+
+  transferAdmin: (chatId: string, userId: string) =>
+    request(`/api/chats/${chatId}/transfer-admin`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }),
 };
 
 // ─── Rooms (WebRTC) ────────────────────────────────────────
@@ -284,8 +293,33 @@ export const calls = {
   end: (callId: string) =>
     request(`/api/calls/${callId}/end`, { method: "POST" }),
 
+  leave: (callId: string) =>
+    request<{ success: boolean; remaining_participants: number }>(`/api/calls/${callId}/leave`, {
+      method: "POST",
+    }),
+
+  decline: (callId: string) =>
+    request(`/api/calls/${callId}/decline`, { method: "POST" }),
+
   getActive: (chatId: string) =>
     request<CallInfo | null>(`/api/calls/active/${chatId}`),
+
+  getParticipants: (callId: string) =>
+    request<{
+      participants: Array<{
+        user_id: string;
+        display_name: string;
+        username: string;
+        language: string;
+        status: string;
+        joined_at: string | null;
+      }>;
+      total: number;
+      active: number;
+    }>(`/api/calls/${callId}/participants`),
+
+  list: () =>
+    request<{ calls: CallInfo[]; total: number }>("/api/calls/"),
 };
 
 export default { auth, friends, chats, rooms, voice, calls };

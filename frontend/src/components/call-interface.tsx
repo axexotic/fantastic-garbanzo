@@ -18,6 +18,8 @@ import {
   Loader2,
   Mic,
   MicOff,
+  Monitor,
+  MonitorOff,
   PhoneOff,
   Users,
   Video,
@@ -32,6 +34,8 @@ interface CallInterfaceProps {
   token: string;
   callId: string;
   callType: "voice" | "video";
+  chatName?: string;
+  isGroupCall?: boolean;
   onLeave?: () => void;
 }
 
@@ -76,10 +80,14 @@ function ParticipantTile({
 function CallContent({
   callId,
   callType,
+  chatName,
+  isGroupCall,
   onLeave,
 }: {
   callId: string;
   callType: "voice" | "video";
+  chatName?: string;
+  isGroupCall?: boolean;
   onLeave?: () => void;
 }) {
   const router = useRouter();
@@ -89,13 +97,16 @@ function CallContent({
 
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(callType === "video");
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get video tracks
-  const videoTracks = useTracks([Track.Source.Camera], {
-    onlySubscribed: false,
-  });
+  const videoTracks = useTracks(
+    [Track.Source.Camera, Track.Source.ScreenShare],
+    { onlySubscribed: false }
+  );
 
   // Call timer
   useEffect(() => {
@@ -131,7 +142,31 @@ function CallContent({
     setIsVideoOn(newVideoOn);
   }, [localParticipant, isVideoOn]);
 
+  const toggleScreenShare = useCallback(async () => {
+    if (!localParticipant) return;
+    const newSharing = !isScreenSharing;
+    await localParticipant.setScreenShareEnabled(newSharing);
+    setIsScreenSharing(newSharing);
+  }, [localParticipant, isScreenSharing]);
+
   const handleLeave = useCallback(async () => {
+    try {
+      if (isGroupCall) {
+        await callsApi.leave(callId);
+      } else {
+        await callsApi.end(callId);
+      }
+    } catch (e) {
+      console.error("Failed to leave/end call:", e);
+    }
+    if (onLeave) {
+      onLeave();
+    } else {
+      router.push("/dashboard");
+    }
+  }, [callId, router, onLeave, isGroupCall]);
+
+  const handleEndForAll = useCallback(async () => {
     try {
       await callsApi.end(callId);
     } catch (e) {
@@ -182,9 +217,14 @@ function CallContent({
     );
   }
 
-  // Get local video track
+  // Get local video track and screen share track
   const localVideoTrack = videoTracks.find(
-    (t) => t.participant.identity === localParticipant?.identity
+    (t) =>
+      t.participant.identity === localParticipant?.identity &&
+      t.source === Track.Source.Camera
+  );
+  const screenShareTracks = videoTracks.filter(
+    (t) => t.source === Track.Source.ScreenShare
   );
 
   return (
@@ -193,31 +233,68 @@ function CallContent({
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="text-sm text-muted-foreground">
-            {callType === "video" ? "Video Call" : "Voice Call"}
+          <span className="text-sm font-medium">
+            {chatName || (callType === "video" ? "Video Call" : "Voice Call")}
           </span>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             {totalParticipants}
           </span>
         </div>
-        <span className="font-mono text-sm text-muted-foreground">
-          {formatDuration(callDuration)}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-sm text-muted-foreground">
+            {formatDuration(callDuration)}
+          </span>
+          {/* Participants Panel Toggle */}
+          <button
+            onClick={() => setShowParticipants(!showParticipants)}
+            className={`rounded-lg p-2 text-sm transition-colors ${
+              showParticipants
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Participants"
+          >
+            <Users className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* ─── Participant Grid ─── */}
-      <div className="flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 overflow-hidden">
+        {/* ─── Main Content ─── */}
+        <div className="flex flex-1 items-center justify-center p-6">
         {callType === "video" ? (
-          <div
-            className={`grid w-full max-w-5xl gap-4 ${
-              totalParticipants <= 1
-                ? "grid-cols-1 max-w-2xl"
-                : totalParticipants <= 4
-                  ? "grid-cols-2"
-                  : "grid-cols-3"
-            }`}
-          >
+          <div className="w-full max-w-5xl space-y-4">
+            {/* Screen share — full width if present */}
+            {screenShareTracks.length > 0 && (
+              <div className="w-full">
+                {screenShareTracks.map((track) => (
+                  <div key={track.participant.identity + "-screen"} className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+                    <VideoTrack
+                      trackRef={track}
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    />
+                    <div className="absolute bottom-2 left-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">
+                      {track.participant.identity === localParticipant?.identity
+                        ? "Your screen"
+                        : `${track.participant.name || track.participant.identity}'s screen`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Camera grid */}
+            <div
+              className={`grid w-full gap-4 ${
+                totalParticipants <= 1
+                  ? "grid-cols-1 max-w-2xl mx-auto"
+                  : totalParticipants <= 4
+                    ? "grid-cols-2"
+                    : totalParticipants <= 9
+                      ? "grid-cols-3"
+                      : "grid-cols-4"
+              }`}
+            >
             {/* Local participant */}
             <ParticipantTile
               trackRef={localVideoTrack}
@@ -227,7 +304,9 @@ function CallContent({
             {/* Remote participants */}
             {remoteParticipants.map((participant) => {
               const remoteTrack = videoTracks.find(
-                (t) => t.participant.identity === participant.identity
+                (t) =>
+                  t.participant.identity === participant.identity &&
+                  t.source === Track.Source.Camera
               );
               return (
                 <ParticipantTile
@@ -237,6 +316,7 @@ function CallContent({
                 />
               );
             })}
+          </div>
           </div>
         ) : (
           /* Voice-only: show avatars + wave animation */
@@ -276,13 +356,65 @@ function CallContent({
             </div>
           </div>
         )}
+
+        {/* Audio renderer for remote participants */}
+        <RoomAudioRenderer />
+
+        </div>
+
+        {/* ─── Participants Sidebar ─── */}
+        {showParticipants && (
+          <div className="w-72 border-l border-border bg-secondary/20 p-4 overflow-y-auto">
+            <h3 className="mb-4 text-sm font-semibold">
+              Participants ({totalParticipants})
+            </h3>
+            {/* Local */}
+            <div className="mb-2 flex items-center gap-3 rounded-lg px-2 py-2 bg-primary/5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                You
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">You</p>
+                <p className="text-xs text-muted-foreground">
+                  {isMuted ? "Muted" : "Speaking"}
+                </p>
+              </div>
+              {isMuted ? (
+                <MicOff className="h-3.5 w-3.5 text-red-500" />
+              ) : (
+                <Mic className="h-3.5 w-3.5 text-green-500" />
+              )}
+            </div>
+            {/* Remote */}
+            {remoteParticipants.map((p) => (
+              <div
+                key={p.identity}
+                className="mb-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-secondary/30"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-bold">
+                  {(p.name || p.identity).charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {p.name || p.identity}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.isSpeaking ? "Speaking" : "Listening"}
+                  </p>
+                </div>
+                {!p.isMicrophoneEnabled ? (
+                  <MicOff className="h-3.5 w-3.5 text-red-500" />
+                ) : (
+                  <Mic className="h-3.5 w-3.5 text-green-500" />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Audio renderer for remote participants */}
-      <RoomAudioRenderer />
-
       {/* ─── Controls ─── */}
-      <div className="flex items-center justify-center gap-6 border-t border-border py-6">
+      <div className="flex items-center justify-center gap-4 border-t border-border py-5">
         {/* Mute toggle */}
         <button
           onClick={toggleMute}
@@ -293,14 +425,10 @@ function CallContent({
           }`}
           title={isMuted ? "Unmute" : "Mute"}
         >
-          {isMuted ? (
-            <MicOff className="h-6 w-6" />
-          ) : (
-            <Mic className="h-6 w-6" />
-          )}
+          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
 
-        {/* Video toggle — only in video calls */}
+        {/* Video toggle */}
         {callType === "video" && (
           <button
             onClick={toggleVideo}
@@ -311,22 +439,48 @@ function CallContent({
             }`}
             title={isVideoOn ? "Turn off camera" : "Turn on camera"}
           >
-            {isVideoOn ? (
-              <Video className="h-6 w-6" />
+            {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+          </button>
+        )}
+
+        {/* Screen share — available for video or group calls */}
+        {(callType === "video" || isGroupCall) && (
+          <button
+            onClick={toggleScreenShare}
+            className={`rounded-full p-4 transition-colors ${
+              isScreenSharing
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+            title={isScreenSharing ? "Stop sharing" : "Share screen"}
+          >
+            {isScreenSharing ? (
+              <MonitorOff className="h-5 w-5" />
             ) : (
-              <VideoOff className="h-6 w-6" />
+              <Monitor className="h-5 w-5" />
             )}
           </button>
         )}
 
-        {/* Hang up */}
+        {/* Leave / Hang up */}
         <button
           onClick={handleLeave}
-          className="rounded-full bg-red-600 p-5 text-white transition-colors hover:bg-red-700"
-          title="Leave call"
+          className="rounded-full bg-red-600 p-4 text-white transition-colors hover:bg-red-700"
+          title={isGroupCall ? "Leave call" : "End call"}
         >
-          <PhoneOff className="h-7 w-7" />
+          <PhoneOff className="h-6 w-6" />
         </button>
+
+        {/* End for all — group calls only */}
+        {isGroupCall && (
+          <button
+            onClick={handleEndForAll}
+            className="rounded-full bg-red-800 px-4 py-3 text-xs font-medium text-white transition-colors hover:bg-red-900"
+            title="End call for everyone"
+          >
+            End All
+          </button>
+        )}
       </div>
     </div>
   );
@@ -339,6 +493,8 @@ export function CallInterface({
   token,
   callId,
   callType,
+  chatName,
+  isGroupCall,
   onLeave,
 }: CallInterfaceProps) {
   const router = useRouter();
@@ -371,7 +527,13 @@ export function CallInterface({
         if (onLeave) onLeave();
       }}
     >
-      <CallContent callId={callId} callType={callType} onLeave={onLeave} />
+      <CallContent
+        callId={callId}
+        callType={callType}
+        chatName={chatName}
+        isGroupCall={isGroupCall}
+        onLeave={onLeave}
+      />
     </LiveKitRoom>
   );
 }

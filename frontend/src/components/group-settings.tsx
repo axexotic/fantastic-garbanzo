@@ -14,6 +14,7 @@ import {
 import { chats as chatsApi, friends as friendsApi } from "@/lib/api";
 import type { ChatPreview, FriendBrief } from "@/lib/api";
 import { useFriendsStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
 
 const LANG_FLAGS: Record<string, string> = {
   en: "🇬🇧", th: "🇹🇭", es: "🇪🇸", fr: "🇫🇷", de: "🇩🇪",
@@ -26,15 +27,19 @@ interface GroupSettingsProps {
   currentUserId: string;
   onClose: () => void;
   onUpdated: () => void;
+  onLeft?: () => void;
 }
 
-export function GroupSettings({ chat, currentUserId, onClose, onUpdated }: GroupSettingsProps) {
+export function GroupSettings({ chat, currentUserId, onClose, onUpdated, onLeft }: GroupSettingsProps) {
   const { friends } = useFriendsStore();
+  const router = useRouter();
   const [name, setName] = useState(chat.name || "");
   const [saving, setSaving] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const currentMemberIds = new Set(chat.members?.map((m) => m.id) || []);
   const isAdmin = chat.members?.find((m) => m.id === currentUserId)?.role === "admin";
@@ -75,6 +80,34 @@ export function GroupSettings({ chat, currentUserId, onClose, onUpdated }: Group
       console.error("Remove failed:", err);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!confirm("Are you sure you want to leave this group?")) return;
+    setLeaving(true);
+    try {
+      await chatsApi.leaveGroup(chat.id);
+      onClose();
+      if (onLeft) onLeft();
+    } catch (err) {
+      console.error("Leave failed:", err);
+    } finally {
+      setLeaving(false);
+    }
+  };
+
+  const handleTransferAdmin = async (userId: string) => {
+    const member = chat.members?.find((m) => m.id === userId);
+    if (!confirm(`Transfer admin to ${member?.display_name || "this user"}?`)) return;
+    setTransferring(true);
+    try {
+      await chatsApi.transferAdmin(chat.id, userId);
+      onUpdated();
+    } catch (err) {
+      console.error("Transfer failed:", err);
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -187,20 +220,39 @@ export function GroupSettings({ chat, currentUserId, onClose, onUpdated }: Group
                   </p>
                 </div>
                 {isAdmin && member.id !== currentUserId && (
-                  <button
-                    onClick={() => handleRemoveMember(member.id)}
-                    disabled={actionLoading === member.id}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <UserMinus className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleTransferAdmin(member.id)}
+                      disabled={transferring || actionLoading === member.id}
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                      title="Make admin"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRemoveMember(member.id)}
+                      disabled={actionLoading === member.id}
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      title="Remove member"
+                    >
+                      <UserMinus className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="border-t border-border px-5 py-4">
+        <div className="border-t border-border px-5 py-4 space-y-2">
+          <button
+            onClick={handleLeaveGroup}
+            disabled={leaving}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+          >
+            {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            Leave Group
+          </button>
           <button
             onClick={onClose}
             className="w-full rounded-lg border border-border py-2.5 text-sm font-medium transition-colors hover:bg-secondary"

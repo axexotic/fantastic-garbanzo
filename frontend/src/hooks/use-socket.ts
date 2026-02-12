@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/store";
-import { useChatStore, useFriendsStore } from "@/lib/store";
+import { useChatStore, useFriendsStore, useCallStore } from "@/lib/store";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
@@ -23,15 +23,24 @@ export function useSocket() {
   const incrementUnread = useChatStore((s) => s.incrementUnread);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const updateFriendStatus = useFriendsStore((s) => s.updateFriendStatus);
+  const setIncomingCall = useCallStore((s) => s.setIncomingCall);
+  const setActiveCall = useCallStore((s) => s.setActiveCall);
+  const updateParticipantCount = useCallStore((s) => s.updateParticipantCount);
 
   // Keep latest values in refs so connect() callback stays stable
   const activeChatIdRef = useRef(activeChatId);
   const incrementUnreadRef = useRef(incrementUnread);
   const updateFriendStatusRef = useRef(updateFriendStatus);
+  const setIncomingCallRef = useRef(setIncomingCall);
+  const setActiveCallRef = useRef(setActiveCall);
+  const updateParticipantCountRef = useRef(updateParticipantCount);
 
   useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
   useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
   useEffect(() => { updateFriendStatusRef.current = updateFriendStatus; }, [updateFriendStatus]);
+  useEffect(() => { setIncomingCallRef.current = setIncomingCall; }, [setIncomingCall]);
+  useEffect(() => { setActiveCallRef.current = setActiveCall; }, [setActiveCall]);
+  useEffect(() => { updateParticipantCountRef.current = updateParticipantCount; }, [updateParticipantCount]);
 
   const connect = useCallback(() => {
     if (!token) return;
@@ -58,6 +67,37 @@ export function useSocket() {
           if (msg.data.chat_id !== activeChatIdRef.current) {
             incrementUnreadRef.current(msg.data.chat_id);
           }
+        }
+
+        // Call events
+        if (type === "incoming_call") {
+          setIncomingCallRef.current({
+            call_id: msg.data.call_id,
+            chat_id: msg.data.chat_id,
+            room_name: msg.data.room_name,
+            call_type: msg.data.call_type,
+            initiated_by: msg.data.initiated_by,
+            initiator_name: msg.data.initiator_name,
+          });
+          setActiveCallRef.current(msg.data.chat_id, {
+            call_id: msg.data.call_id,
+            chat_id: msg.data.chat_id,
+            room_name: msg.data.room_name,
+            call_type: msg.data.call_type,
+            participant_count: 1,
+          });
+        }
+
+        if (type === "call_ended") {
+          setActiveCallRef.current(msg.data.chat_id, null);
+          setIncomingCallRef.current(null);
+        }
+
+        if (type === "participant_joined" || type === "participant_left") {
+          updateParticipantCountRef.current(
+            msg.data.chat_id,
+            msg.data.participant_count
+          );
         }
 
         // Dispatch to registered handlers
@@ -144,6 +184,14 @@ export function useSocket() {
     }
   }, []);
 
+  const declineCall = useCallback((callId: string, chatId: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: "call_decline", call_id: callId, chat_id: chatId })
+      );
+    }
+  }, []);
+
   // ─── Event Subscription ────────────────
 
   const on = useCallback((type: string, handler: MessageHandler) => {
@@ -163,6 +211,7 @@ export function useSocket() {
     joinChat,
     leaveChat,
     sendTyping,
+    declineCall,
     on,
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
   };
