@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     # LiveKit (WebRTC)
     livekit_url: str = "wss://localhost:7880"
+    livekit_public_url: str = ""  # Public URL for clients (falls back to livekit_url)
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
 

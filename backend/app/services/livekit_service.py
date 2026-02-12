@@ -48,9 +48,12 @@ class LiveKitService:
         return token.to_jwt()
 
     def get_ws_url(self) -> str:
-        """Return the LiveKit WebSocket URL for clients to connect to."""
+        """Return the LiveKit WebSocket URL for clients to connect to.
+
+        Returns the public URL if configured, otherwise falls back to livekit_url.
+        """
         settings = get_settings()
-        return settings.livekit_url
+        return settings.livekit_public_url or settings.livekit_url
 
 
 # Singleton
