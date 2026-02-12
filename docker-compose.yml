@@ -38,7 +38,7 @@ services:
       - "7881:7881"   # RTC (TCP)
       - "7882:7882/udp"  # RTC (UDP)
     environment:
-      - LIVEKIT_KEYS=devkey: devsecret
+      - "LIVEKIT_KEYS=devkey: devsecret"
 
   # -- App services (uncomment for full-stack Docker) --
   # backend:

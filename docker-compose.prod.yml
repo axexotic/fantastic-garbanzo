@@ -41,24 +41,13 @@ services:
     expose:
       - "8000"
 
-  livekit:
-    image: livekit/livekit-server:latest
-    restart: always
-    command: --dev --bind 0.0.0.0
-    ports:
-      - "7880:7880"      # HTTP / WebSocket signalling
-      - "7881:7881"      # RTC (TCP)
-      - "50000-50060:50000-50060/udp"  # RTC (UDP media)
-    environment:
-      - LIVEKIT_KEYS=devkey: devsecret
-
   frontend:
     build: ./frontend
     restart: always
     environment:
       - NEXT_PUBLIC_API_URL=https://api.flaskai.xyz
       - NEXT_PUBLIC_WS_URL=wss://api.flaskai.xyz
-      - NEXT_PUBLIC_LIVEKIT_URL=wss://flaskai.xyz:7880
+      - NEXT_PUBLIC_LIVEKIT_URL=wss://api.flaskai.xyz/lk
     depends_on:
       - backend
     expose:
