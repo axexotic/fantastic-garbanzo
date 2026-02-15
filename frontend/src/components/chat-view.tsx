@@ -128,7 +128,8 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
     return () => {
       socket.leaveChat(chatId);
     };
-  }, [chatId, socket, clearUnread]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
 
   // Listen for incoming messages
   useEffect(() => {
