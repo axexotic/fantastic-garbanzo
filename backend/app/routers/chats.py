@@ -12,7 +12,7 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Chat, ChatMember, Friendship, Message, User
 from app.services.translation_service import translation_service
-from app.routers.websocket import notify_group_update
+from app.routers.websocket import notify_group_update, manager
 
 router = APIRouter()
 
@@ -530,6 +530,58 @@ async def set_chat_language(
     return {"status": "updated", "language": body.language}
 
 
+# ─── Search Messages ────────────────────────────────────────
+
+@router.get("/search/messages")
+async def search_messages(
+    q: str = Query(..., min_length=1, max_length=200),
+    limit: int = Query(30, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Search messages across all chats the user is a member of.
+    Searches both original content and translations.
+    """
+    # Get all chat IDs the user belongs to
+    member_result = await db.execute(
+        select(ChatMember.chat_id, ChatMember.language)
+        .where(ChatMember.user_id == current_user.id)
+    )
+    memberships = {str(row[0]): row[1] for row in member_result.all()}
+
+    if not memberships:
+        return {"results": [], "total": 0}
+
+    chat_ids = list(memberships.keys())
+
+    # Search in original content and JSONB translations
+    from sqlalchemy import cast, String
+    results = await db.execute(
+        select(Message)
+        .options(selectinload(Message.sender))
+        .where(
+            Message.chat_id.in_(chat_ids),
+            Message.is_deleted == False,
+            Message.content.ilike(f"%{q}%"),
+        )
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
+    messages = results.scalars().all()
+
+    formatted = []
+    for msg in messages:
+        viewer_lang = memberships.get(str(msg.chat_id), "en")
+        formatted.append({
+            **format_message(msg, viewer_lang),
+            "sender_username": msg.sender.username if msg.sender else "",
+            "sender_display_name": msg.sender.display_name if msg.sender else "",
+        })
+
+    return {"results": formatted, "total": len(formatted)}
+
+
 # ─── Leave Group ────────────────────────────────────────────
 
 @router.post("/{chat_id}/leave")
@@ -641,3 +693,116 @@ async def transfer_admin(
     )
 
     return {"status": "transferred"}
+
+
+# ─── Read Receipts ──────────────────────────────────────────
+
+@router.post("/{chat_id}/read")
+async def mark_chat_read(
+    chat_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark all messages in a chat as read for the current user."""
+    _, membership = await get_chat_with_access(chat_id, current_user.id, db)
+
+    membership.last_read_at = datetime.utcnow()
+    await db.commit()
+
+    # Broadcast read receipt to other members viewing this chat
+    await manager.broadcast_to_chat(
+        chat_id,
+        {
+            "type": "read_receipt",
+            "data": {
+                "chat_id": chat_id,
+                "user_id": str(current_user.id),
+                "username": current_user.username,
+                "read_at": membership.last_read_at.isoformat(),
+            },
+        },
+        exclude_user=str(current_user.id),
+    )
+
+    return {"status": "read", "read_at": membership.last_read_at.isoformat()}
+
+
+# ─── Export Transcript ──────────────────────────────────────
+
+@router.get("/{chat_id}/export")
+async def export_transcript(
+    chat_id: str,
+    format: str = Query("json", regex="^(json|txt|csv)$"),
+    limit: int = Query(500, le=5000),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export chat transcript in JSON, TXT, or CSV format.
+    """
+    from fastapi.responses import PlainTextResponse
+    import csv
+    import io
+    import json as json_lib
+
+    chat, membership = await get_chat_with_access(chat_id, current_user.id, db)
+
+    result = await db.execute(
+        select(Message)
+        .options(selectinload(Message.sender))
+        .where(Message.chat_id == chat_id, Message.is_deleted == False)
+        .order_by(Message.created_at.asc())
+        .limit(limit)
+    )
+    messages = result.scalars().all()
+
+    viewer_lang = membership.language
+
+    if format == "json":
+        data = [
+            {
+                "id": str(m.id),
+                "sender": m.sender.display_name if m.sender else "Unknown",
+                "content": m.content,
+                "translated": (m.translations or {}).get(viewer_lang, m.content),
+                "source_language": m.source_language,
+                "message_type": m.message_type,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in messages
+        ]
+        return {
+            "chat_id": chat_id,
+            "chat_name": chat.name or "DM",
+            "exported_at": datetime.utcnow().isoformat(),
+            "message_count": len(data),
+            "messages": data,
+        }
+
+    elif format == "txt":
+        lines = [f"Chat export: {chat.name or 'DM'}", f"Exported at: {datetime.utcnow().isoformat()}", ""]
+        for m in messages:
+            name = m.sender.display_name if m.sender else "Unknown"
+            ts = m.created_at.strftime("%Y-%m-%d %H:%M")
+            translated = (m.translations or {}).get(viewer_lang, m.content)
+            lines.append(f"[{ts}] {name}: {m.content}")
+            if translated != m.content:
+                lines.append(f"         → {translated}")
+        return PlainTextResponse("\n".join(lines), media_type="text/plain")
+
+    elif format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["timestamp", "sender", "content", "translated", "language", "type"])
+        for m in messages:
+            name = m.sender.display_name if m.sender else "Unknown"
+            translated = (m.translations or {}).get(viewer_lang, m.content)
+            writer.writerow([
+                m.created_at.isoformat(),
+                name,
+                m.content,
+                translated,
+                m.source_language,
+                m.message_type,
+            ])
+        return PlainTextResponse(output.getvalue(), media_type="text/csv")

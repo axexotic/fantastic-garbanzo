@@ -294,6 +294,35 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     exclude_user=user_id,
                 )
 
+            elif msg_type == "mark_read":
+                chat_id = msg["chat_id"]
+                # Update last_read_at in DB
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(ChatMember).where(
+                            ChatMember.chat_id == chat_id,
+                            ChatMember.user_id == user_id,
+                        )
+                    )
+                    membership = result.scalar_one_or_none()
+                    if membership:
+                        membership.last_read_at = datetime.utcnow()
+                        await session.commit()
+                        # Broadcast read receipt
+                        await manager.broadcast_to_chat(
+                            chat_id,
+                            {
+                                "type": "read_receipt",
+                                "data": {
+                                    "chat_id": chat_id,
+                                    "user_id": user_id,
+                                    "username": username,
+                                    "read_at": membership.last_read_at.isoformat(),
+                                },
+                            },
+                            exclude_user=user_id,
+                        )
+
             # ── Voice Translation ──
             elif msg_type == "config":
                 if "source_lang" in msg:

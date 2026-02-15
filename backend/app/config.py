@@ -45,6 +45,21 @@ class Settings(BaseSettings):
     aws_s3_bucket: str = "voicetranslate-voices"
     aws_region: str = "us-east-1"
 
+    # Email
+    sendgrid_api_key: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+    email_from_address: str = "noreply@flaskai.xyz"
+    email_from_name: str = "FlaskAI"
+
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_pro: str = ""  # Monthly pro plan price ID
+
     # Monitoring
     sentry_dsn: str = ""
 

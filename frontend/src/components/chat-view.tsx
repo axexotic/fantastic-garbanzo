@@ -124,6 +124,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   useEffect(() => {
     socket.joinChat(chatId);
     clearUnread(chatId);
+    socket.markRead(chatId);
     return () => {
       socket.leaveChat(chatId);
     };

@@ -212,6 +212,11 @@ export const chats = {
       method: "POST",
       body: JSON.stringify({ user_id: userId }),
     }),
+
+  searchMessages: (query: string, limit = 30) =>
+    request<{ results: ChatMessage[]; total: number }>(
+      `/api/chats/search/messages?q=${encodeURIComponent(query)}&limit=${limit}`
+    ),
 };
 
 // ─── Rooms (WebRTC) ────────────────────────────────────────
@@ -322,4 +327,185 @@ export const calls = {
     request<{ calls: CallInfo[]; total: number }>("/api/calls/"),
 };
 
-export default { auth, friends, chats, rooms, voice, calls };
+// ─── Payments ──────────────────────────────────────────────
+
+export interface SubscriptionInfo {
+  plan: string;
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+}
+
+export const payments = {
+  getSubscription: () =>
+    request<SubscriptionInfo>("/api/payments/subscription"),
+
+  createCheckout: (priceId?: string) =>
+    request<{ checkout_url: string }>("/api/payments/checkout", {
+      method: "POST",
+      body: JSON.stringify({ price_id: priceId }),
+    }),
+
+  openPortal: () =>
+    request<{ portal_url: string }>("/api/payments/portal", { method: "POST" }),
+};
+
+// ─── Admin ─────────────────────────────────────────────────
+
+export interface AdminStats {
+  total_users: number;
+  active_users_24h: number;
+  total_chats: number;
+  total_messages: number;
+  total_calls: number;
+  total_translations: number;
+  avg_translation_latency_ms: number | null;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  display_name: string;
+  preferred_language: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+  last_seen_at: string | null;
+}
+
+export const admin = {
+  stats: () => request<AdminStats>("/api/admin/stats"),
+
+  users: (skip = 0, limit = 50, search = "") =>
+    request<AdminUser[]>(
+      `/api/admin/users?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`
+    ),
+
+  toggleUserActive: (userId: string) =>
+    request<{ id: string; is_active: boolean }>(`/api/admin/users/${userId}/toggle-active`, {
+      method: "PATCH",
+    }),
+
+  translationLogs: (skip = 0, limit = 50) =>
+    request<any[]>(`/api/admin/translation-logs?skip=${skip}&limit=${limit}`),
+
+  languageAnalytics: () => request<any[]>("/api/admin/analytics/languages"),
+};
+
+// ─── AI Analysis ───────────────────────────────────────────
+
+export const ai = {
+  summarizeCall: (callId: string) =>
+    request<any>(`/api/ai/calls/${callId}/summarize`, { method: "POST" }),
+
+  callSentiment: (callId: string) =>
+    request<any>(`/api/ai/calls/${callId}/sentiment`, { method: "POST" }),
+
+  callEntities: (callId: string) =>
+    request<any>(`/api/ai/calls/${callId}/entities`, { method: "POST" }),
+
+  callActionItems: (callId: string) =>
+    request<any>(`/api/ai/calls/${callId}/action-items`, { method: "POST" }),
+
+  fullCallAnalysis: (callId: string) =>
+    request<any>(`/api/ai/calls/${callId}/full-analysis`, { method: "POST" }),
+
+  summarizeChat: (chatId: string) =>
+    request<any>(`/api/ai/chats/${chatId}/summarize`, { method: "POST" }),
+
+  chatSentiment: (chatId: string) =>
+    request<any>(`/api/ai/chats/${chatId}/sentiment`, { method: "POST" }),
+
+  analyzeText: (text: string) =>
+    request<any>("/api/ai/analyze/summarize", { method: "POST", body: JSON.stringify({ text }) }),
+};
+
+// ─── Notifications ─────────────────────────────────────────
+
+export interface NotificationPrefs {
+  email_messages: boolean;
+  email_calls: boolean;
+  email_friend_requests: boolean;
+  push_messages: boolean;
+  push_calls: boolean;
+  push_friend_requests: boolean;
+  sound_enabled: boolean;
+  dnd_enabled: boolean;
+  dnd_start: string;
+  dnd_end: string;
+}
+
+export const notifications = {
+  getPrefs: () => request<NotificationPrefs>("/api/notifications/"),
+
+  updatePrefs: (data: Partial<NotificationPrefs>) =>
+    request<NotificationPrefs>("/api/notifications/", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+};
+
+// ─── Integrations ──────────────────────────────────────────
+
+export interface WebhookInfo {
+  id: string;
+  name: string;
+  provider: string;
+  webhook_url: string;
+  events: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export const integrations = {
+  listWebhooks: () => request<WebhookInfo[]>("/api/integrations/webhooks"),
+
+  createWebhook: (data: { name: string; provider: string; webhook_url: string; events?: string[] }) =>
+    request<WebhookInfo>("/api/integrations/webhooks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateWebhook: (id: string, data: Partial<WebhookInfo>) =>
+    request("/api/integrations/webhooks/" + id, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteWebhook: (id: string) =>
+    request(`/api/integrations/webhooks/${id}`, { method: "DELETE" }),
+
+  testWebhook: (id: string) =>
+    request<{ success: boolean }>(`/api/integrations/webhooks/${id}/test`, { method: "POST" }),
+
+  calendarEvents: () => request<{ events: any[]; total: number }>("/api/integrations/calendar/upcoming-calls"),
+};
+
+// ─── Password Reset ────────────────────────────────────────
+
+export const passwordReset = {
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, new_password: string) =>
+    request<{ message: string }>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password }),
+    }),
+};
+
+// ─── Chat Extras ───────────────────────────────────────────
+
+export const chatExtras = {
+  markRead: (chatId: string) =>
+    request(`/api/chats/${chatId}/read`, { method: "POST" }),
+
+  exportTranscript: (chatId: string, format: "json" | "txt" | "csv" = "json") =>
+    request<any>(`/api/chats/${chatId}/export?format=${format}`),
+};
+
+export default { auth, friends, chats, rooms, voice, calls, payments, admin, ai, notifications, integrations };

@@ -77,19 +77,47 @@ class TranslationService:
         glossary: dict[str, str] | None = None,
         use_claude: bool = False,
     ) -> str:
-        """Translate text using GPT-4 Turbo (or Claude as fallback)."""
+        """Translate text using GPT-4 Turbo (or Claude as fallback). Cached in Redis."""
+        # Skip translation if same language
+        if source_language == target_language:
+            return text
+
+        # Check Redis cache first (only for text without custom context)
+        from app.services.redis_service import redis_service
+        use_cache = not persona and not industry and not glossary
+        if use_cache:
+            try:
+                cached = await redis_service.get_translation(text, source_language, target_language)
+                if cached:
+                    await redis_service.increment_counter("translation_cache_hits")
+                    return cached
+            except Exception:
+                pass  # Redis down — proceed without cache
+
         system_prompt = _build_system_prompt(
             source_language, target_language, persona, industry, glossary
         )
 
         if use_claude:
-            return await self._translate_claude(text, system_prompt)
+            result = await self._translate_claude(text, system_prompt)
+        else:
+            try:
+                result = await self._translate_openai(text, system_prompt)
+            except Exception:
+                # Fallback to Claude
+                result = await self._translate_claude(text, system_prompt)
 
-        try:
-            return await self._translate_openai(text, system_prompt)
-        except Exception:
-            # Fallback to Claude
-            return await self._translate_claude(text, system_prompt)
+        # Store in cache
+        if use_cache and result:
+            try:
+                await redis_service.set_translation(
+                    text, source_language, target_language, result
+                )
+                await redis_service.increment_counter("translation_cache_misses")
+            except Exception:
+                pass
+
+        return result
 
     async def translate_stream(
         self,

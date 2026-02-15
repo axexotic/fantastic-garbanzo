@@ -184,6 +184,12 @@ export function useSocket() {
     }
   }, []);
 
+  const markRead = useCallback((chatId: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "mark_read", chat_id: chatId }));
+    }
+  }, []);
+
   const declineCall = useCallback((callId: string, chatId: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
@@ -211,6 +217,7 @@ export function useSocket() {
     joinChat,
     leaveChat,
     sendTyping,
+    markRead,
     declineCall,
     on,
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,

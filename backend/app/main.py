@@ -1,18 +1,37 @@
 """FastAPI application factory."""
 
+import logging
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.config import get_settings
-from app.routers import auth, calls, chats, friends, health, rooms, voice, websocket
+from app.routers import admin, ai, auth, calls, chats, friends, health, integrations, notifications, payments, rooms, voice, websocket
+from app.middleware.rate_limit import RateLimitMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     settings = get_settings()
+
+    # -- Initialize Sentry --
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            traces_sample_rate=0.2,
+            profiles_sample_rate=0.1,
+            integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+            environment="production" if not settings.debug else "development",
+        )
+        logger.info("Sentry initialized")
+
     # -- Startup --
     from app.services.redis_service import redis_service
 
@@ -51,6 +70,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Rate limiting
+    app.add_middleware(RateLimitMiddleware)
+
     # Routers
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
@@ -59,6 +81,11 @@ def create_app() -> FastAPI:
     app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
     app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
+    app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+    app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
+    app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
+    app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
+    app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
     app.include_router(websocket.router)
 
     return app

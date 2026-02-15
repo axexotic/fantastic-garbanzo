@@ -187,6 +187,13 @@ class Call(Base):
     started_at = Column(DateTime, default=datetime.utcnow)
     ended_at = Column(DateTime)
 
+    # Recording metadata
+    is_recorded = Column(Boolean, default=False)
+    recording_url = Column(String(500))
+    recording_s3_key = Column(String(500))
+    recording_size_bytes = Column(Integer)
+    recording_duration_seconds = Column(Float)
+
     chat = relationship("Chat", back_populates="calls")
     initiator = relationship("User", foreign_keys=[initiated_by])
     participants = relationship("CallParticipant", back_populates="call")
@@ -223,6 +230,28 @@ class VoiceProfile(Base):
     user = relationship("User", back_populates="voice_profile")
 
 
+# ─── Subscriptions ──────────────────────────────────────────
+
+class Subscription(Base):
+    """Stripe subscription for a user — free, pro, enterprise."""
+
+    __tablename__ = "subscriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+    stripe_customer_id = Column(String(255), unique=True)
+    stripe_subscription_id = Column(String(255), unique=True)
+    plan = Column(String(50), default="free")  # free, pro, enterprise
+    status = Column(String(50), default="active")  # active, canceled, past_due, trialing
+    current_period_start = Column(DateTime)
+    current_period_end = Column(DateTime)
+    cancel_at_period_end = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", backref="subscription")
+
+
 # ─── Translation Logs ───────────────────────────────────────
 
 class TranslationLog(Base):
@@ -238,3 +267,56 @@ class TranslationLog(Base):
     latency_ms = Column(Float)
     model_used = Column(String(50))
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ─── Webhook Configs ────────────────────────────────────────
+
+class WebhookConfig(Base):
+    """User-configured webhook for third-party integrations."""
+
+    __tablename__ = "webhook_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    provider = Column(String(50), nullable=False)  # slack, teams, generic
+    webhook_url = Column(String(1000), nullable=False)
+    events = Column(ARRAY(String), default=[])  # list of event types
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="webhooks")
+
+
+# ─── Notification Preferences ───────────────────────────────
+
+class NotificationPreference(Base):
+    """Per-user notification preferences."""
+
+    __tablename__ = "notification_preferences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+
+    # Email notifications
+    email_messages = Column(Boolean, default=False)
+    email_calls = Column(Boolean, default=True)
+    email_friend_requests = Column(Boolean, default=True)
+
+    # Push / in-app notifications
+    push_messages = Column(Boolean, default=True)
+    push_calls = Column(Boolean, default=True)
+    push_friend_requests = Column(Boolean, default=True)
+
+    # Sound
+    sound_enabled = Column(Boolean, default=True)
+
+    # Do Not Disturb
+    dnd_enabled = Column(Boolean, default=False)
+    dnd_start = Column(String(5), default="22:00")   # HH:MM
+    dnd_end = Column(String(5), default="08:00")      # HH:MM
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", backref="notification_preferences")

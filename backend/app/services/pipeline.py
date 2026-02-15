@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from app.services.stt_service import stt_service
 from app.services.translation_service import translation_service
 from app.services.tts_service import tts_service
+from app.services.logging_service import logging_service
 
 
 @dataclass
@@ -112,6 +113,11 @@ class TranslationPipeline:
         )
         metrics.translate_end = time.time()
 
+        # Log translation for analytics
+        asyncio.create_task(
+            self._log_translation(context, transcript, translated_text, metrics.translate_latency_ms)
+        )
+
         # --- Stage 3: Text-to-Speech ---
         metrics.tts_start = time.time()
         audio_out = await tts_service.synthesize(
@@ -123,6 +129,22 @@ class TranslationPipeline:
 
         metrics.total_end = time.time()
         return audio_out, translated_text, metrics
+
+    async def _log_translation(
+        self, context: TranslationContext, source_text: str, translated_text: str, latency_ms: float
+    ):
+        """Fire-and-forget logging."""
+        try:
+            await logging_service.log_translation(
+                source_language=context.source_language,
+                target_language=context.target_language,
+                source_text=source_text,
+                translated_text=translated_text,
+                latency_ms=latency_ms,
+                model_used="gpt-4-turbo",
+            )
+        except Exception:
+            pass
 
     async def process_audio_streaming(
         self,

@@ -431,3 +431,113 @@ async def list_calls(
         ],
         "total": len(calls),
     }
+
+
+# ─── Call Recording ─────────────────────────────────────────
+
+@router.post("/{call_id}/recording/start")
+async def start_recording(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a call as being recorded."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    if str(call.initiated_by) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the call initiator can start recording")
+
+    call.is_recorded = True
+    await db.commit()
+
+    return {"call_id": str(call.id), "recording": True}
+
+
+@router.post("/{call_id}/recording/stop")
+async def stop_recording(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop recording and save metadata."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    call.is_recorded = True  # keep as recorded
+    await db.commit()
+
+    return {"call_id": str(call.id), "recording": False, "recorded": True}
+
+
+@router.post("/{call_id}/recording/metadata")
+async def save_recording_metadata(
+    call_id: str,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save recording metadata (S3 key, size, duration) after upload."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    if body.get("s3_key"):
+        call.recording_s3_key = body["s3_key"]
+    if body.get("url"):
+        call.recording_url = body["url"]
+    if body.get("size_bytes"):
+        call.recording_size_bytes = body["size_bytes"]
+    if body.get("duration_seconds"):
+        call.recording_duration_seconds = body["duration_seconds"]
+
+    call.is_recorded = True
+    await db.commit()
+
+    return {
+        "call_id": str(call.id),
+        "recording_url": call.recording_url,
+        "recording_s3_key": call.recording_s3_key,
+        "recording_size_bytes": call.recording_size_bytes,
+        "recording_duration_seconds": call.recording_duration_seconds,
+    }
+
+
+@router.get("/{call_id}/recording")
+async def get_recording_info(
+    call_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get recording metadata for a call."""
+    result = await db.execute(select(Call).where(Call.id == call_id))
+    call = result.scalar_one_or_none()
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Verify user is a participant
+    participant = await db.execute(
+        select(CallParticipant).where(
+            CallParticipant.call_id == call_id,
+            CallParticipant.user_id == current_user.id,
+        )
+    )
+    if not participant.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Not a participant in this call")
+
+    if not call.is_recorded:
+        return {"call_id": str(call.id), "recorded": False}
+
+    return {
+        "call_id": str(call.id),
+        "recorded": True,
+        "recording_url": call.recording_url,
+        "recording_s3_key": call.recording_s3_key,
+        "recording_size_bytes": call.recording_size_bytes,
+        "recording_duration_seconds": call.recording_duration_seconds,
+    }

@@ -1,5 +1,6 @@
 """Friends router — send/accept/reject requests, list friends, unfriend."""
 
+import asyncio
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import FriendRequest, Friendship, User
+from app.services.email_service import email_service
 
 router = APIRouter()
 
@@ -106,6 +108,11 @@ async def send_friend_request(
     db.add(req)
     await db.commit()
     await db.refresh(req)
+
+    # Notify target via email (fire-and-forget)
+    asyncio.create_task(
+        email_service.send_friend_request(target.email, current_user.display_name)
+    )
 
     return {"id": str(req.id), "status": "pending", "to": body.username}
 

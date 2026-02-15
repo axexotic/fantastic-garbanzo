@@ -1,6 +1,8 @@
-"""Auth router — signup, login, me."""
+"""Auth router — signup, login, me, password reset."""
 
-from datetime import datetime
+import asyncio
+import secrets
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
@@ -11,6 +13,8 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import User
 from app.services.auth_service import create_access_token, hash_password, verify_password
+from app.services.email_service import email_service
+from app.services.redis_service import redis_service
 
 router = APIRouter()
 
@@ -92,6 +96,10 @@ async def signup(req: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     token = create_access_token(str(user.id))
+
+    # Fire-and-forget welcome email
+    asyncio.create_task(email_service.send_welcome(user.email, user.display_name))
+
     return AuthResponse(token=token, user=user_to_dict(user))
 
 
@@ -140,3 +148,60 @@ async def update_profile(
     await db.commit()
     await db.refresh(current_user)
     return user_to_dict(current_user)
+
+
+# ─── Password Reset ─────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Request a password reset. Sends an email with a reset link.
+    Always returns 200 to prevent email enumeration.
+    """
+    result = await db.execute(select(User).where(User.email == req.email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        # Generate a secure token
+        token = secrets.token_urlsafe(48)
+        # Store in Redis with 1-hour expiry: password_reset:{token} -> user_id
+        await redis_service.set(
+            f"password_reset:{token}", str(user.id), expire_seconds=3600
+        )
+        # Fire-and-forget email
+        asyncio.create_task(email_service.send_password_reset(user.email, token))
+
+    # Always return success to avoid email enumeration
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Reset password using a valid token from the email."""
+    # Look up the token in Redis
+    user_id = await redis_service.get(f"password_reset:{req.token}")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Update password
+    user.password_hash = hash_password(req.new_password)
+    await db.commit()
+
+    # Delete the used token
+    await redis_service.delete(f"password_reset:{req.token}")
+
+    return {"message": "Password has been reset successfully."}

@@ -62,6 +62,65 @@ class RedisService:
     ) -> None:
         await self.set_json(f"session:{session_id}", data, expire_seconds)
 
+    # -- Translation cache --
+
+    def _translation_key(self, source_lang: str, target_lang: str, text: str) -> str:
+        """Generate a cache key for translations using a hash of the text."""
+        import hashlib
+        text_hash = hashlib.md5(text.strip().lower().encode()).hexdigest()
+        return f"trans:{source_lang}:{target_lang}:{text_hash}"
+
+    async def get_translation(
+        self, text: str, source_lang: str, target_lang: str
+    ) -> str | None:
+        """Get cached translation if available."""
+        key = self._translation_key(source_lang, target_lang, text)
+        return await self.get(key)
+
+    async def set_translation(
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+        translated: str,
+        expire_seconds: int = 86400,  # 24 hours
+    ) -> None:
+        """Cache a translation result."""
+        key = self._translation_key(source_lang, target_lang, text)
+        await self.set(key, translated, expire_seconds)
+
+    # -- Rate limiting --
+
+    async def check_rate_limit(
+        self, identifier: str, limit: int, window_seconds: int = 60
+    ) -> tuple[bool, int]:
+        """
+        Check if rate limit is exceeded.
+
+        Returns:
+            (allowed: bool, remaining: int)
+        """
+        key = f"ratelimit:{identifier}"
+        current = await self.client.get(key)
+        if current is None:
+            await self.client.setex(key, window_seconds, 1)
+            return True, limit - 1
+        count = int(current)
+        if count >= limit:
+            return False, 0
+        await self.client.incr(key)
+        return True, limit - count - 1
+
+    # -- Metrics counters --
+
+    async def increment_counter(self, key: str) -> int:
+        """Increment a counter and return new value."""
+        return await self.client.incr(f"metric:{key}")
+
+    async def get_counter(self, key: str) -> int:
+        val = await self.client.get(f"metric:{key}")
+        return int(val) if val else 0
+
 
 # Singleton
 redis_service = RedisService()
