@@ -28,6 +28,19 @@ services:
       timeout: 5s
       retries: 5
 
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: always
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7881:7881"                    # ICE/TCP fallback
+      - "3478:3478/udp"               # TURN relay
+      - "50000-50060:50000-50060/udp" # ICE/UDP media
+    expose:
+      - "7880"                         # WebSocket signaling (nginx proxies)
+
   backend:
     build: ./backend
     restart: always
@@ -71,6 +84,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - livekit
 
   certbot:
     image: certbot/certbot

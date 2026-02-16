@@ -1,0 +1,26 @@
+# LiveKit Server — Production Configuration
+# Docs: https://docs.livekit.io/realtime/self-hosting/
+
+port: 7880
+bind_addresses:
+  - ""
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50060
+  # Discover the EC2 public IP via STUN for ICE candidates
+  use_external_ip: true
+  enable_loopback_candidate: false
+
+# Built-in TURN relay for clients behind restrictive firewalls
+turn:
+  enabled: true
+  domain: api.flaskai.xyz
+  udp_port: 3478
+
+keys:
+  APIMpEdBZSuo6Xd: e7LbAHWAsQLQzoX15RN3BfH6zji1xb2gEOqOdouKKCA
+
+logging:
+  level: info
