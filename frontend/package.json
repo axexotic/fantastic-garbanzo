@@ -14,13 +14,16 @@
     "react-dom": "^18.3.0",
     "@livekit/components-react": "^2.6.0",
     "@livekit/components-styles": "^1.1.0",
+    "@livekit/track-processors": "^0.10.0",
     "livekit-client": "^2.6.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.400.0",
     "tailwind-merge": "^2.5.0",
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.0",
+    "framer-motion": "^10.18.0",
+    "date-fns": "^3.0.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

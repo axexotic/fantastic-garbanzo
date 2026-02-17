@@ -10,7 +10,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.config import get_settings
-from app.routers import admin, ai, auth, calls, chats, friends, health, integrations, notifications, payments, rooms, voice, websocket
+from app.routers import admin, ai, analytics, auth, call_features, calls, chats, friends, health, integrations, notifications, payments, rooms, security, voice, websocket
 from app.middleware.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
@@ -80,12 +80,15 @@ def create_app() -> FastAPI:
     app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
     app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
     app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
+    app.include_router(call_features.router, prefix="/api/calls/features", tags=["call-features"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
+    app.include_router(security.router, prefix="/api/security", tags=["security"])
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
     app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
     app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
     app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
     app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+    app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(websocket.router)
 
     return app

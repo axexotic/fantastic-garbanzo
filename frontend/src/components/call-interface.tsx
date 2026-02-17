@@ -24,8 +24,27 @@ import {
   Users,
   Video,
   VideoOff,
+  Hand,
+  MessageSquare,
+  Settings,
+  Share2,
+  Copy,
+  Pause,
+  Play,
+  PauseCircle,
+  PlayCircle,
+  MessageCircle,
+  BarChart3,
+  Wind,
+  Zap,
+  Palette,
+  Send,
+  X,
+  Plus,
+  CheckCircle,
 } from "lucide-react";
-import { calls as callsApi } from "@/lib/api";
+import { calls as callsApi, callFeatures } from "@/lib/api";
+import { useCallFeaturesStore } from "@/lib/store";
 
 /* ─── Props ─────────────────────────────────────────────── */
 
@@ -44,20 +63,32 @@ interface CallInterfaceProps {
 function ParticipantTile({
   trackRef,
   isLocal,
+  isLarge,
   name,
+  isRaised,
+  bgMode,
 }: {
   trackRef?: any;
   isLocal?: boolean;
+  isLarge?: boolean;
   name: string;
+  isRaised?: boolean;
+  bgMode?: "none" | "blur" | "virtual";
 }) {
   const label = isLocal ? "You" : name || "Participant";
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+    <div className={`relative ${isLarge ? "w-full h-full" : "aspect-video"} overflow-hidden rounded-xl bg-secondary`}>
       {trackRef ? (
         <VideoTrack
           trackRef={trackRef}
-          style={{ width: "100%", height: "100%", objectFit: "cover", transform: isLocal ? "scaleX(-1)" : undefined }}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transform: isLocal ? "scaleX(-1)" : undefined,
+            filter: bgMode === "blur" ? "blur(5px)" : undefined,
+          }}
         />
       ) : (
         <div className="flex h-full items-center justify-center">
@@ -71,6 +102,13 @@ function ParticipantTile({
       <div className="absolute bottom-2 left-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">
         {label}
       </div>
+
+      {/* Raised hand indicator */}
+      {isRaised && (
+        <div className="absolute top-2 right-2 text-2xl">
+          ✋
+        </div>
+      )}
     </div>
   );
 }
@@ -95,12 +133,58 @@ function CallContent({
   const remoteParticipants = useRemoteParticipants();
   const connectionState = useConnectionState();
 
+  // Store
+  const {
+    isOnHold,
+    setHold,
+    raisedHands,
+    toggleHand,
+    activePoll,
+    setActivePoll,
+    inCallMessages,
+    addInCallMessage,
+    inCallChatOpen,
+    setInCallChatOpen,
+    viewMode,
+    setViewMode,
+    showParticipants,
+    setShowParticipants,
+    bgMode,
+    setBgMode,
+    pipEnabled,
+    setPipEnabled,
+    speakingTimes,
+    setSpeakingTimes,
+    reactions,
+    addReaction,
+    clearOldReactions,
+  } = useCallFeaturesStore();
+
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(callType === "video");
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [cameraIndex, setCameraIndex] = useState(0);
+  const [cameras, setCameras] = useState<any[]>([]);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [transferTarget, setTransferTarget] = useState("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [lockPin, setLockPin] = useState("");
+  const [callLocked, setCallLocked] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(null);
+  const [engagementScore, setEngagementScore] = useState(0);
+  const [sharedFile, setSharedFile] = useState<any>(null);
+  const [inCallChatMessage, setInCallChatMessage] = useState("");
+  const [reactionEmojis] = useState(["👍", "❤️", "😂", "🔥", "🎉"]);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const speakingTimerRef = useRef<Record<string, number>>({});
 
   // Get video tracks
   const videoTracks = useTracks(
@@ -120,13 +204,19 @@ function CallContent({
     };
   }, [connectionState]);
 
+  // Cleanup reactions every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => clearOldReactions(), 5000);
+    return () => clearInterval(interval);
+  }, [clearOldReactions]);
+
   // Set camera on/off based on call type after connecting
   useEffect(() => {
     if (localParticipant && connectionState === ConnectionState.Connected) {
-      localParticipant.setCameraEnabled(callType === "video");
-      localParticipant.setMicrophoneEnabled(true);
+      localParticipant.setCameraEnabled(callType === "video" && !isOnHold);
+      localParticipant.setMicrophoneEnabled(true && !isOnHold);
     }
-  }, [localParticipant, connectionState, callType]);
+  }, [localParticipant, connectionState, callType, isOnHold]);
 
   const toggleMute = useCallback(async () => {
     if (!localParticipant) return;
@@ -148,6 +238,138 @@ function CallContent({
     await localParticipant.setScreenShareEnabled(newSharing);
     setIsScreenSharing(newSharing);
   }, [localParticipant, isScreenSharing]);
+
+  const toggleHoldCall = useCallback(async () => {
+    try {
+      if (isOnHold) {
+        await callFeatures.resume(callId);
+        if (localParticipant) {
+          await localParticipant.setMicrophoneEnabled(true);
+          await localParticipant.setCameraEnabled(isVideoOn);
+        }
+      } else {
+        await callFeatures.hold(callId);
+        if (localParticipant) {
+          await localParticipant.setMicrophoneEnabled(false);
+          await localParticipant.setCameraEnabled(false);
+        }
+      }
+      setHold(callId, !isOnHold);
+    } catch (e) {
+      console.error("Failed to toggle hold:", e);
+    }
+  }, [callId, isOnHold, isVideoOn, localParticipant, setHold]);
+
+  const initiateTransfer = useCallback(async () => {
+    if (!transferTarget) return;
+    try {
+      await callFeatures.transfer(callId, transferTarget);
+      setShowTransferModal(false);
+      setTransferTarget("");
+    } catch (e) {
+      console.error("Failed to transfer:", e);
+    }
+  }, [callId, transferTarget]);
+
+  const toggleBackground = useCallback(() => {
+    const modes: Array<"none" | "blur" | "virtual"> = ["none", "blur", "virtual"];
+    const nextMode = modes[(modes.indexOf(bgMode) + 1) % modes.length];
+    setBgMode(nextMode);
+  }, [bgMode, setBgMode]);
+
+  const sendReaction = useCallback(
+    async (emoji: string) => {
+      try {
+        await callFeatures.sendReaction(callId, emoji);
+        addReaction({ user_id: localParticipant?.identity || "local", emoji, timestamp: Date.now() });
+      } catch (e) {
+        console.error("Failed to send reaction:", e);
+      }
+    },
+    [callId, localParticipant, addReaction]
+  );
+
+  const toggleRaiseHand = useCallback(async () => {
+    const raised = raisedHands.has(localParticipant?.identity || "");
+    try {
+      if (raised) {
+        await callFeatures.lowerHand(callId);
+      } else {
+        await callFeatures.raiseHand(callId);
+      }
+      toggleHand(localParticipant?.identity || "", !raised);
+    } catch (e) {
+      console.error("Failed to toggle hand:", e);
+    }
+  }, [callId, raisedHands, localParticipant, toggleHand]);
+
+  const createPoll = useCallback(async () => {
+    if (!pollQuestion.trim() || pollOptions.some((o) => !o.trim())) return;
+    try {
+      const poll = await callFeatures.createPoll(callId, pollQuestion, pollOptions);
+      setActivePoll(poll);
+      setPollQuestion("");
+      setPollOptions(["", ""]);
+      setShowPollCreator(false);
+    } catch (e) {
+      console.error("Failed to create poll:", e);
+    }
+  }, [callId, pollQuestion, pollOptions, setActivePoll]);
+
+  const votePoll = useCallback(
+    async (optionIndex: number) => {
+      if (!activePoll) return;
+      try {
+        await callFeatures.votePoll(callId, activePoll.id, optionIndex);
+      } catch (e) {
+        console.error("Failed to vote:", e);
+      }
+    },
+    [callId, activePoll]
+  );
+
+  const sendInCallChat = useCallback(async () => {
+    if (!inCallChatMessage.trim()) return;
+    try {
+      await callFeatures.sendInCallChat(callId, inCallChatMessage);
+      addInCallMessage({
+        user_id: localParticipant?.identity || "local",
+        username: localParticipant?.name || "You",
+        message: inCallChatMessage,
+        timestamp: new Date().toISOString(),
+      });
+      setInCallChatMessage("");
+    } catch (e) {
+      console.error("Failed to send message:", e);
+    }
+  }, [callId, inCallChatMessage, localParticipant, addInCallMessage]);
+
+  const shareFile = useCallback(async (file: File) => {
+    try {
+      await callFeatures.shareFile(callId, file.name, URL.createObjectURL(file), file.size);
+      setSharedFile({
+        name: file.name,
+        size: file.size,
+        url: URL.createObjectURL(file),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Failed to share file:", e);
+    }
+  }, [callId]);
+
+  const getAiSuggestion = useCallback(async () => {
+    try {
+      const context = `Current speakers: ${Array.from(raisedHands).join(", ")}. Chat: ${inCallMessages
+        .slice(-3)
+        .map((m) => `${m.username}: ${m.message}`)
+        .join(" ")}`;
+      const response = await callFeatures.getAiSuggestion(context);
+      setAiSuggestion(response.suggestion || "");
+    } catch (e) {
+      console.error("Failed to get suggestion:", e);
+    }
+  }, [raisedHands, inCallMessages]);
 
   const handleLeave = useCallback(async () => {
     try {
@@ -180,8 +402,10 @@ function CallContent({
   }, [callId, router, onLeave]);
 
   const formatDuration = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
+    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
@@ -232,26 +456,22 @@ function CallContent({
       {/* ─── Status Bar ─── */}
       <div className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-2 w-2 rounded-full bg-green-500" />
+          <div className={`h-2 w-2 rounded-full ${isOnHold ? "bg-yellow-500" : "bg-green-500"}`} />
           <span className="text-sm font-medium">
-            {chatName || (callType === "video" ? "Video Call" : "Voice Call")}
+            {isOnHold ? "On Hold · " : ""}{chatName || (callType === "video" ? "Video Call" : "Voice Call")}
           </span>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             {totalParticipants}
           </span>
+          {callLocked && <span className="text-xs bg-red-500/20 text-red-600 px-2 py-1 rounded">🔒 Locked</span>}
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-sm text-muted-foreground">
-            {formatDuration(callDuration)}
-          </span>
-          {/* Participants Panel Toggle */}
+          <span className="font-mono text-sm text-muted-foreground">{formatDuration(callDuration)}</span>
           <button
             onClick={() => setShowParticipants(!showParticipants)}
             className={`rounded-lg p-2 text-sm transition-colors ${
-              showParticipants
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary"
+              showParticipants ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
             }`}
             title="Participants"
           >
@@ -262,113 +482,168 @@ function CallContent({
 
       <div className="flex flex-1 overflow-hidden">
         {/* ─── Main Content ─── */}
-        <div className="flex flex-1 items-center justify-center p-6">
-        {callType === "video" ? (
-          <div className="w-full max-w-5xl space-y-4">
-            {/* Screen share — full width if present */}
-            {screenShareTracks.length > 0 && (
-              <div className="w-full">
-                {screenShareTracks.map((track) => (
-                  <div key={track.participant.identity + "-screen"} className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+        <div className={`flex flex-1 items-center justify-center p-6 transition-all ${inCallChatOpen ? "pr-0" : ""}`}>
+          {callType === "video" ? (
+            <div className="w-full max-w-5xl space-y-4">
+              {/* Screen share — full width if present */}
+              {screenShareTracks.length > 0 && (
+                <div className="relative w-full aspect-video overflow-hidden rounded-xl bg-secondary">
+                  {screenShareTracks.map((track) => (
                     <VideoTrack
+                      key={track.participant.identity + "-screen"}
                       trackRef={track}
                       style={{ width: "100%", height: "100%", objectFit: "contain" }}
                     />
-                    <div className="absolute bottom-2 left-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">
-                      {track.participant.identity === localParticipant?.identity
-                        ? "Your screen"
-                        : `${track.participant.name || track.participant.identity}'s screen`}
+                  ))}
+                </div>
+              )}
+
+              {/* Camera grid */}
+              {viewMode === "grid" || viewMode === "sidebar" ? (
+                <div
+                  className={`grid w-full gap-4 ${
+                    totalParticipants <= 1
+                      ? "grid-cols-1 max-w-2xl mx-auto"
+                      : totalParticipants <= 4
+                      ? "grid-cols-2"
+                      : totalParticipants <= 9
+                      ? "grid-cols-3"
+                      : "grid-cols-4"
+                  }`}
+                >
+                  <ParticipantTile trackRef={localVideoTrack} isLocal name="You" bgMode={bgMode} />
+                  {remoteParticipants.map((participant) => {
+                    const remoteTrack = videoTracks.find(
+                      (t) =>
+                        t.participant.identity === participant.identity &&
+                        t.source === Track.Source.Camera
+                    );
+                    const isRaised = raisedHands.has(participant.identity);
+                    return (
+                      <ParticipantTile
+                        key={participant.identity}
+                        trackRef={remoteTrack}
+                        name={participant.name || participant.identity}
+                        isRaised={isRaised}
+                        bgMode={bgMode}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Speaker view */
+                <div className="flex gap-4 h-full">
+                  <div className="flex-1">
+                    {currentSpeaker ? (
+                      <ParticipantTile
+                        isLarge
+                        trackRef={videoTracks.find(
+                          (t) =>
+                            t.participant.identity === currentSpeaker &&
+                            t.source === Track.Source.Camera
+                        )}
+                        name={
+                          remoteParticipants.find((p) => p.identity === currentSpeaker)?.name ||
+                          currentSpeaker
+                        }
+                        bgMode={bgMode}
+                      />
+                    ) : (
+                      <ParticipantTile
+                        isLarge
+                        trackRef={localVideoTrack}
+                        isLocal
+                        name="You"
+                        bgMode={bgMode}
+                      />
+                    )}
+                  </div>
+                  <div className="w-40 space-y-2 overflow-y-auto">
+                    {remoteParticipants.map((p) => (
+                      <div
+                        key={p.identity}
+                        onClick={() => setCurrentSpeaker(p.identity)}
+                        className={`cursor-pointer rounded-lg overflow-hidden aspect-video ${
+                          currentSpeaker === p.identity ? "ring-2 ring-primary" : ""
+                        }`}
+                      >
+                        <ParticipantTile
+                          trackRef={videoTracks.find(
+                            (t) =>
+                              t.participant.identity === p.identity &&
+                              t.source === Track.Source.Camera
+                          )}
+                          name={p.name || p.identity}
+                          bgMode={bgMode}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Voice-only */
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex flex-wrap justify-center gap-6">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 text-xl font-bold text-primary relative">
+                    You
+                    {raisedHands.has(localParticipant?.identity || "") && (
+                      <Hand className="absolute -top-2 -right-2 h-5 w-5 text-yellow-500" />
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">You</span>
+                </div>
+                {remoteParticipants.map((p) => (
+                  <div key={p.identity} className="flex flex-col items-center gap-2">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-xl font-bold text-foreground relative">
+                      {(p.name || p.identity).charAt(0).toUpperCase()}
+                      {raisedHands.has(p.identity) && (
+                        <Hand className="absolute -top-2 -right-2 h-5 w-5 text-yellow-500" />
+                      )}
                     </div>
+                    <span className="text-xs text-muted-foreground">{p.name || p.identity}</span>
                   </div>
                 ))}
               </div>
-            )}
-            {/* Camera grid */}
-            <div
-              className={`grid w-full gap-4 ${
-                totalParticipants <= 1
-                  ? "grid-cols-1 max-w-2xl mx-auto"
-                  : totalParticipants <= 4
-                    ? "grid-cols-2"
-                    : totalParticipants <= 9
-                      ? "grid-cols-3"
-                      : "grid-cols-4"
-              }`}
-            >
-            {/* Local participant */}
-            <ParticipantTile
-              trackRef={localVideoTrack}
-              isLocal
-              name="You"
-            />
-            {/* Remote participants */}
-            {remoteParticipants.map((participant) => {
-              const remoteTrack = videoTracks.find(
-                (t) =>
-                  t.participant.identity === participant.identity &&
-                  t.source === Track.Source.Camera
-              );
-              return (
-                <ParticipantTile
-                  key={participant.identity}
-                  trackRef={remoteTrack}
-                  name={participant.name || participant.identity}
-                />
-              );
-            })}
-          </div>
-          </div>
-        ) : (
-          /* Voice-only: show avatars + wave animation */
-          <div className="flex flex-col items-center gap-8">
-            <div className="flex flex-wrap justify-center gap-6">
-              {/* Local */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 text-xl font-bold text-primary">
-                  You
-                </div>
-                <span className="text-xs text-muted-foreground">You</span>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-8 w-1.5 rounded-full bg-primary animate-pulse"
+                    style={{ animationDelay: `${i * 150}ms`, animationDuration: "1s" }}
+                  />
+                ))}
               </div>
-              {/* Remote */}
-              {remoteParticipants.map((p) => (
-                <div key={p.identity} className="flex flex-col items-center gap-2">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-xl font-bold text-foreground">
-                    {(p.name || p.identity).charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {p.name || p.identity}
-                  </span>
-                </div>
-              ))}
             </div>
-            {/* Animated wave bars */}
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
+          )}
+
+          {/* Reactions Overlay */}
+          {reactions.length > 0 && (
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+              {reactions.map((r, i) => (
                 <div
                   key={i}
-                  className="h-8 w-1.5 rounded-full bg-primary animate-pulse"
+                  className="absolute text-2xl animate-bounce"
                   style={{
-                    animationDelay: `${i * 150}ms`,
-                    animationDuration: "1s",
+                    left: Math.random() * 100 + "%",
+                    top: Math.random() * 100 + "%",
                   }}
-                />
+                >
+                  {r.emoji}
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Audio renderer for remote participants */}
-        <RoomAudioRenderer />
-
+          <RoomAudioRenderer />
         </div>
 
         {/* ─── Participants Sidebar ─── */}
         {showParticipants && (
           <div className="w-72 border-l border-border bg-secondary/20 p-4 overflow-y-auto">
-            <h3 className="mb-4 text-sm font-semibold">
-              Participants ({totalParticipants})
-            </h3>
-            {/* Local */}
+            <h3 className="mb-4 text-sm font-semibold">Participants ({totalParticipants})</h3>
             <div className="mb-2 flex items-center gap-3 rounded-lg px-2 py-2 bg-primary/5">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
                 You
@@ -385,7 +660,6 @@ function CallContent({
                 <Mic className="h-3.5 w-3.5 text-green-500" />
               )}
             </div>
-            {/* Remote */}
             {remoteParticipants.map((p) => (
               <div
                 key={p.identity}
@@ -395,9 +669,7 @@ function CallContent({
                   {(p.name || p.identity).charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {p.name || p.identity}
-                  </p>
+                  <p className="truncate text-sm font-medium">{p.name || p.identity}</p>
                   <p className="text-xs text-muted-foreground">
                     {p.isSpeaking ? "Speaking" : "Listening"}
                   </p>
@@ -407,21 +679,208 @@ function CallContent({
                 ) : (
                   <Mic className="h-3.5 w-3.5 text-green-500" />
                 )}
+                {raisedHands.has(p.identity) && (
+                  <Hand className="h-3.5 w-3.5 text-yellow-500" />
+                )}
               </div>
             ))}
           </div>
         )}
+
+        {/* ─── In-Call Chat Sidebar ─── */}
+        {inCallChatOpen && (
+          <div className="w-80 border-l border-border bg-secondary/10 flex flex-col">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="text-sm font-semibold">In-Call Chat</h3>
+              <button onClick={() => setInCallChatOpen(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {inCallMessages.map((msg, i) => (
+                <div key={i} className="text-xs space-y-0.5">
+                  <p className="font-medium text-foreground">{msg.username}</p>
+                  <p className="text-muted-foreground break-words">{msg.message}</p>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-border p-4 space-y-2">
+              <input
+                type="text"
+                placeholder="Message..."
+                value={inCallChatMessage}
+                onChange={(e) => setInCallChatMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendInCallChat()}
+                className="w-full text-xs px-2 py-1.5 rounded border border-border bg-background"
+              />
+              <button
+                onClick={sendInCallChat}
+                className="w-full text-xs px-2 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── AI Panel ─── */}
+        {showAiPanel && (
+          <div className="w-80 border-l border-border bg-secondary/10 p-4 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">AI Assistant</h3>
+              <button onClick={() => setShowAiPanel(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {aiSuggestion && (
+              <div className="bg-primary/10 rounded-lg p-3 text-xs mb-4">
+                <p className="font-medium mb-2">Suggestion:</p>
+                <p className="text-muted-foreground">{aiSuggestion}</p>
+              </div>
+            )}
+            <button
+              onClick={getAiSuggestion}
+              className="w-full text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 mb-4"
+            >
+              Get Suggestion
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* ─── Active Poll ─── */}
+      {activePoll && (
+        <div className="fixed bottom-24 left-6 bg-background border border-border rounded-lg p-4 w-96 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold">{activePoll.question}</h4>
+            <button onClick={() => setActivePoll(null)}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {activePoll.options.map((opt, i) => {
+              const votes = activePoll.votes[opt]?.length || 0;
+              const total = Object.values(activePoll.votes).flat().length || 1;
+              const percent = Math.round((votes / total) * 100);
+              return (
+                <button
+                  key={i}
+                  onClick={() => votePoll(i)}
+                  className="w-full text-left text-xs px-3 py-2 rounded border border-border hover:bg-secondary relative overflow-hidden"
+                >
+                  <div
+                    className="absolute inset-0 bg-primary/20"
+                    style={{ width: `${percent}%` }}
+                  />
+                  <span className="relative">{opt} ({percent}%)</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modals ─── */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg p-6 w-96">
+            <h3 className="text-sm font-semibold mb-4">Transfer Call</h3>
+            <select
+              value={transferTarget}
+              onChange={(e) => setTransferTarget(e.target.value)}
+              className="w-full text-xs px-3 py-2 rounded border border-border mb-4"
+            >
+              <option value="">Select recipient...</option>
+              {remoteParticipants.map((p) => (
+                <option key={p.identity} value={p.identity}>
+                  {p.name || p.identity}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={initiateTransfer}
+                className="flex-1 text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Transfer
+              </button>
+              <button
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setTransferTarget("");
+                }}
+                className="flex-1 text-xs px-3 py-2 rounded border border-border hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPollCreator && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg p-6 w-96">
+            <h3 className="text-sm font-semibold mb-4">Create Poll</h3>
+            <input
+              type="text"
+              placeholder="Question..."
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              className="w-full text-xs px-3 py-2 rounded border border-border mb-3"
+            />
+            {pollOptions.map((opt, i) => (
+              <input
+                key={i}
+                type="text"
+                placeholder={`Option ${i + 1}`}
+                value={opt}
+                onChange={(e) => {
+                  const next = [...pollOptions];
+                  next[i] = e.target.value;
+                  setPollOptions(next);
+                }}
+                className="w-full text-xs px-3 py-2 rounded border border-border mb-2"
+              />
+            ))}
+            <button
+              onClick={() => {
+                const next = [...pollOptions, ""];
+                setPollOptions(next);
+              }}
+              className="w-full text-xs px-3 py-2 rounded border border-border hover:bg-secondary mb-3"
+            >
+              + Add Option
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={createPoll}
+                className="flex-1 text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowPollCreator(false);
+                  setPollQuestion("");
+                  setPollOptions(["", ""]);
+                }}
+                className="flex-1 text-xs px-3 py-2 rounded border border-border hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Controls ─── */}
-      <div className="flex items-center justify-center gap-4 border-t border-border py-5">
+      <div className="flex items-center justify-center gap-2 border-t border-border py-4 px-6 flex-wrap">
         {/* Mute toggle */}
         <button
           onClick={toggleMute}
-          className={`rounded-full p-4 transition-colors ${
-            isMuted
-              ? "bg-red-500/20 text-red-500"
-              : "bg-secondary text-foreground hover:bg-secondary/80"
+          className={`rounded-full p-3 transition-colors ${
+            isMuted ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
           title={isMuted ? "Unmute" : "Mute"}
         >
@@ -432,10 +891,8 @@ function CallContent({
         {callType === "video" && (
           <button
             onClick={toggleVideo}
-            className={`rounded-full p-4 transition-colors ${
-              !isVideoOn
-                ? "bg-red-500/20 text-red-500"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
+            className={`rounded-full p-3 transition-colors ${
+              !isVideoOn ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
             title={isVideoOn ? "Turn off camera" : "Turn on camera"}
           >
@@ -443,35 +900,144 @@ function CallContent({
           </button>
         )}
 
-        {/* Screen share — available for video or group calls */}
+        {/* Screen share */}
         {(callType === "video" || isGroupCall) && (
           <button
             onClick={toggleScreenShare}
-            className={`rounded-full p-4 transition-colors ${
-              isScreenSharing
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
+            className={`rounded-full p-3 transition-colors ${
+              isScreenSharing ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
             title={isScreenSharing ? "Stop sharing" : "Share screen"}
           >
-            {isScreenSharing ? (
-              <MonitorOff className="h-5 w-5" />
-            ) : (
-              <Monitor className="h-5 w-5" />
-            )}
+            {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
           </button>
         )}
+
+        {/* Background toggle */}
+        {callType === "video" && (
+          <button
+            onClick={toggleBackground}
+            className="rounded-full p-3 bg-secondary text-foreground hover:bg-secondary/80"
+            title={bgMode}
+          >
+            <Wind className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Hold toggle */}
+        {isGroupCall && (
+          <button
+            onClick={toggleHoldCall}
+            className={`rounded-full p-3 transition-colors ${
+              isOnHold ? "bg-yellow-500/20 text-yellow-600" : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+            title={isOnHold ? "Resume" : "Hold"}
+          >
+            {isOnHold ? <PlayCircle className="h-5 w-5" /> : <PauseCircle className="h-5 w-5" />}
+          </button>
+        )}
+
+        {/* Raise hand */}
+        <button
+          onClick={toggleRaiseHand}
+          className={`rounded-full p-3 transition-colors ${
+            raisedHands.has(localParticipant?.identity || "")
+              ? "bg-yellow-500/20 text-yellow-600"
+              : "bg-secondary text-foreground hover:bg-secondary/80"
+          }`}
+          title="Raise hand"
+        >
+          <Hand className="h-5 w-5" />
+        </button>
+
+        {/* Reactions */}
+        <div className="flex gap-1">
+          {reactionEmojis.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => sendReaction(emoji)}
+              className="text-lg hover:scale-125 transition-transform"
+              title={emoji}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+
+        {/* In-call chat */}
+        <button
+          onClick={() => setInCallChatOpen(!inCallChatOpen)}
+          className={`rounded-full p-3 transition-colors ${
+            inCallChatOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+          }`}
+          title="In-call chat"
+        >
+          <MessageCircle className="h-5 w-5" />
+        </button>
+
+        {/* AI Assistant */}
+        <button
+          onClick={() => setShowAiPanel(!showAiPanel)}
+          className={`rounded-full p-3 transition-colors ${
+            showAiPanel ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+          }`}
+          title="AI Assistant"
+        >
+          <Zap className="h-5 w-5" />
+        </button>
+
+        {/* Poll */}
+        <button
+          onClick={() => setShowPollCreator(!showPollCreator)}
+          className="rounded-full p-3 bg-secondary text-foreground hover:bg-secondary/80"
+          title="Create poll"
+        >
+          <BarChart3 className="h-5 w-5" />
+        </button>
+
+        {/* Transfer */}
+        {isGroupCall && (
+          <button
+            onClick={() => setShowTransferModal(!showTransferModal)}
+            className="rounded-full p-3 bg-secondary text-foreground hover:bg-secondary/80"
+            title="Transfer call"
+          >
+            <Share2 className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Recording */}
+        <button
+          onClick={() => setIsRecording(!isRecording)}
+          className={`rounded-full p-3 transition-colors ${
+            isRecording ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
+          }`}
+          title={isRecording ? "Stop recording" : "Record"}
+        >
+          {isRecording ? <PlayCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className={`rounded-full p-3 transition-colors ${
+            showSettings ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+          }`}
+          title="Settings"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
 
         {/* Leave / Hang up */}
         <button
           onClick={handleLeave}
-          className="rounded-full bg-red-600 p-4 text-white transition-colors hover:bg-red-700"
+          className="rounded-full bg-red-600 p-3 text-white transition-colors hover:bg-red-700"
           title={isGroupCall ? "Leave call" : "End call"}
         >
           <PhoneOff className="h-6 w-6" />
         </button>
 
-        {/* End for all — group calls only */}
+        {/* End for all */}
         {isGroupCall && (
           <button
             onClick={handleEndForAll}

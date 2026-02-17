@@ -508,4 +508,186 @@ export const chatExtras = {
     request<any>(`/api/chats/${chatId}/export?format=${format}`),
 };
 
-export default { auth, friends, chats, rooms, voice, calls, payments, admin, ai, notifications, integrations };
+// ─── Call Features ─────────────────────────────────────────
+
+export interface PollData {
+  id: string;
+  question: string;
+  options: string[];
+  votes: Record<string, string[]>;
+  created_by: string;
+  created_at: string;
+}
+
+export const callFeatures = {
+  // Hold / Resume / Transfer
+  hold: (callId: string) =>
+    request("/api/calls/features/hold", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  resume: (callId: string) =>
+    request("/api/calls/features/resume", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  transfer: (callId: string, targetUserId: string) =>
+    request("/api/calls/features/transfer", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, target_user_id: targetUserId }),
+    }),
+
+  // Lock / Unlock
+  lock: (callId: string, pin: string) =>
+    request("/api/calls/features/lock", { method: "POST", body: JSON.stringify({ call_id: callId, pin }) }),
+  unlock: (callId: string) =>
+    request("/api/calls/features/unlock", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  verifyLock: (callId: string, pin: string) =>
+    request("/api/calls/features/verify-lock", { method: "POST", body: JSON.stringify({ call_id: callId, pin }) }),
+
+  // Reactions & Raise Hand
+  sendReaction: (callId: string, emoji: string) =>
+    request("/api/calls/features/reaction", { method: "POST", body: JSON.stringify({ call_id: callId, emoji }) }),
+  raiseHand: (callId: string) =>
+    request("/api/calls/features/raise-hand", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  lowerHand: (callId: string) =>
+    request("/api/calls/features/lower-hand", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+
+  // Polls
+  createPoll: (callId: string, question: string, options: string[]) =>
+    request<PollData>("/api/calls/features/poll/create", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, question, options }),
+    }),
+  votePoll: (callId: string, pollId: string, optionIndex: number) =>
+    request("/api/calls/features/poll/vote", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, poll_id: pollId, option_index: optionIndex }),
+    }),
+
+  // Speaking time & Engagement
+  reportSpeaking: (callId: string, durationSeconds: number) =>
+    request("/api/calls/features/speaking", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, duration_seconds: durationSeconds }),
+    }),
+  getSpeakingTime: (callId: string) =>
+    request<Record<string, number>>(`/api/calls/features/${callId}/speaking-time`),
+  getEngagement: (callId: string) =>
+    request<any>(`/api/calls/features/${callId}/engagement`),
+
+  // Whiteboard / File share / In-call chat
+  whiteboard: (callId: string, action: string, data?: any) =>
+    request("/api/calls/features/whiteboard", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, action, data: data || {} }),
+    }),
+  shareFile: (callId: string, fileName: string, fileUrl: string, fileSize: number) =>
+    request("/api/calls/features/share-file", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, file_name: fileName, file_url: fileUrl, file_size: fileSize }),
+    }),
+  sendInCallChat: (callId: string, message: string) =>
+    request("/api/calls/features/in-call-chat", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, message }),
+    }),
+
+  // AI features
+  getAudioConfig: () => request<any>("/api/calls/features/ai/audio-config"),
+  getVideoConfig: () => request<any>("/api/calls/features/ai/video-config"),
+  detectTone: (text: string) =>
+    request<any>("/api/calls/features/ai/detect-tone", { method: "POST", body: JSON.stringify({ text }) }),
+  generateMeetingNotes: (callId: string, transcript: string[]) =>
+    request<any>("/api/calls/features/ai/meeting-notes", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, transcript }),
+    }),
+  getAiSuggestion: (context: string) =>
+    request<any>("/api/calls/features/ai/suggestion", { method: "POST", body: JSON.stringify({ context }) }),
+  detectInterrupt: (events: any[]) =>
+    request<any>("/api/calls/features/ai/interrupt-detect", { method: "POST", body: JSON.stringify({ events }) }),
+  moderate: (messages: string[]) =>
+    request<any>("/api/calls/features/ai/moderate", { method: "POST", body: JSON.stringify({ messages }) }),
+  stressAnalysis: (audioFeatures: any) =>
+    request<any>("/api/calls/features/ai/stress-analysis", { method: "POST", body: JSON.stringify({ audio_features: audioFeatures }) }),
+  getVoiceStyles: () => request<any>("/api/calls/features/ai/voice-styles"),
+  digitalTwin: (personality: string, question: string) =>
+    request<any>("/api/calls/features/ai/digital-twin", {
+      method: "POST",
+      body: JSON.stringify({ personality, question }),
+    }),
+
+  // Roles & Permissions
+  setRole: (callId: string, targetUserId: string, role: string) =>
+    request("/api/calls/features/role", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, target_user_id: targetUserId, role }),
+    }),
+  getPermissions: (callId: string) =>
+    request<any>(`/api/calls/features/${callId}/permissions`),
+};
+
+// ─── Security ──────────────────────────────────────────────
+
+export const security = {
+  // 2FA
+  setup2FA: () => request<{ secret: string; totp_uri: string; backup_codes: string[] }>("/api/security/2fa/setup", { method: "POST" }),
+  verify2FA: (code: string) =>
+    request<{ enabled: boolean }>("/api/security/2fa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  validate2FA: (code: string) =>
+    request<{ valid: boolean }>("/api/security/2fa/validate", { method: "POST", body: JSON.stringify({ code }) }),
+  disable2FA: () => request("/api/security/2fa", { method: "DELETE" }),
+  get2FAStatus: () => request<{ enabled: boolean }>("/api/security/2fa/status"),
+
+  // Devices
+  registerDevice: (fingerprint: string, name: string, browser: string, os: string) =>
+    request("/api/security/devices/register", {
+      method: "POST",
+      body: JSON.stringify({ fingerprint, name, browser, os }),
+    }),
+  listDevices: () => request<{ devices: any[] }>("/api/security/devices"),
+  trustDevice: (deviceId: string) =>
+    request("/api/security/devices/trust", { method: "POST", body: JSON.stringify({ device_id: deviceId }) }),
+  revokeDevice: (deviceId: string) =>
+    request(`/api/security/devices/${deviceId}`, { method: "DELETE" }),
+
+  // E2E encryption
+  storePublicKey: (publicKey: string) =>
+    request("/api/security/e2e/public-key", { method: "POST", body: JSON.stringify({ public_key: publicKey }) }),
+  getPublicKey: (userId: string) =>
+    request<{ user_id: string; public_key: string }>(`/api/security/e2e/public-key/${userId}`),
+
+  // Status
+  updateStatus: (status: string) =>
+    request<{ status: string }>("/api/security/status", { method: "PATCH", body: JSON.stringify({ status }) }),
+
+  // Favorites
+  addFavorite: (friendId: string) =>
+    request<{ favorites: string[] }>(`/api/security/favorites/${friendId}`, { method: "POST" }),
+  removeFavorite: (friendId: string) =>
+    request<{ favorites: string[] }>(`/api/security/favorites/${friendId}`, { method: "DELETE" }),
+  getFavorites: () => request<{ favorites: string[] }>("/api/security/favorites"),
+
+  // Contact groups
+  createContactGroup: (name: string, memberIds: string[] = []) =>
+    request("/api/security/contact-groups", { method: "POST", body: JSON.stringify({ name, member_ids: memberIds }) }),
+  listContactGroups: () => request<{ groups: any[] }>("/api/security/contact-groups"),
+  deleteContactGroup: (groupId: string) =>
+    request(`/api/security/contact-groups/${groupId}`, { method: "DELETE" }),
+};
+
+// ─── Analytics ─────────────────────────────────────────────
+
+export const analytics = {
+  callSummary: (days = 30) =>
+    request<any>(`/api/analytics/calls/summary?days=${days}`),
+  callHistory: (page = 1, perPage = 20, callType?: string) => {
+    let url = `/api/analytics/calls/history?page=${page}&per_page=${perPage}`;
+    if (callType) url += `&call_type=${callType}`;
+    return request<any>(url);
+  },
+  messageSummary: (days = 30) =>
+    request<any>(`/api/analytics/messages/summary?days=${days}`),
+  engagement: () => request<any>("/api/analytics/engagement"),
+  translationUsage: () => request<any>("/api/analytics/translation/usage"),
+};
+
+export default {
+  auth, friends, chats, rooms, voice, calls, payments, admin, ai,
+  notifications, integrations, callFeatures, security, analytics,
+};

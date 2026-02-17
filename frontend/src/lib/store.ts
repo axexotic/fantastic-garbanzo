@@ -190,3 +190,147 @@ export const useCallStore = create<CallState>((set) => ({
 
   clearAllCalls: () => set({ incomingCall: null, activeCalls: new Map() }),
 }));
+
+// ─── Call Features Store ───────────────────────────────────
+
+export interface Reaction {
+  user_id: string;
+  emoji: string;
+  timestamp: number;
+}
+
+export interface PollState {
+  id: string;
+  question: string;
+  options: string[];
+  votes: Record<string, string[]>;
+  created_by: string;
+}
+
+export interface InCallChatMsg {
+  user_id: string;
+  username: string;
+  message: string;
+  timestamp: string;
+}
+
+interface CallFeaturesState {
+  // Hold/Transfer
+  isOnHold: boolean;
+  holdCallId: string | null;
+
+  // Reactions
+  reactions: Reaction[];
+  addReaction: (r: Reaction) => void;
+  clearOldReactions: () => void;
+
+  // Raise hand
+  raisedHands: Set<string>;
+  toggleHand: (userId: string, raised: boolean) => void;
+
+  // Polls
+  activePoll: PollState | null;
+  setActivePoll: (poll: PollState | null) => void;
+
+  // In-call chat
+  inCallMessages: InCallChatMsg[];
+  addInCallMessage: (msg: InCallChatMsg) => void;
+  inCallChatOpen: boolean;
+  setInCallChatOpen: (open: boolean) => void;
+
+  // View mode
+  viewMode: "grid" | "speaker" | "sidebar";
+  setViewMode: (mode: "grid" | "speaker" | "sidebar") => void;
+
+  // Panels
+  showParticipants: boolean;
+  showSettings: boolean;
+  setShowParticipants: (show: boolean) => void;
+  setShowSettings: (show: boolean) => void;
+
+  // Speaking time
+  speakingTimes: Record<string, number>;
+  setSpeakingTimes: (times: Record<string, number>) => void;
+
+  // Background
+  bgMode: "none" | "blur" | "virtual";
+  setBgMode: (mode: "none" | "blur" | "virtual") => void;
+
+  // PiP
+  pipEnabled: boolean;
+  setPipEnabled: (enabled: boolean) => void;
+
+  // Hold
+  setHold: (callId: string | null, onHold: boolean) => void;
+
+  // Reset
+  resetFeatures: () => void;
+}
+
+export const useCallFeaturesStore = create<CallFeaturesState>((set) => ({
+  isOnHold: false,
+  holdCallId: null,
+  reactions: [],
+  raisedHands: new Set(),
+  activePoll: null,
+  inCallMessages: [],
+  inCallChatOpen: false,
+  viewMode: "grid",
+  showParticipants: false,
+  showSettings: false,
+  speakingTimes: {},
+  bgMode: "none",
+  pipEnabled: false,
+
+  addReaction: (r) =>
+    set((state) => ({ reactions: [...state.reactions, r].slice(-50) })),
+
+  clearOldReactions: () =>
+    set((state) => ({
+      reactions: state.reactions.filter(
+        (r) => Date.now() - r.timestamp < 5000
+      ),
+    })),
+
+  toggleHand: (userId, raised) =>
+    set((state) => {
+      const next = new Set(state.raisedHands);
+      raised ? next.add(userId) : next.delete(userId);
+      return { raisedHands: next };
+    }),
+
+  setActivePoll: (poll) => set({ activePoll: poll }),
+
+  addInCallMessage: (msg) =>
+    set((state) => ({
+      inCallMessages: [...state.inCallMessages, msg].slice(-200),
+    })),
+
+  setInCallChatOpen: (open) => set({ inCallChatOpen: open }),
+  setViewMode: (mode) => set({ viewMode: mode }),
+  setShowParticipants: (show) => set({ showParticipants: show }),
+  setShowSettings: (show) => set({ showSettings: show }),
+  setSpeakingTimes: (times) => set({ speakingTimes: times }),
+  setBgMode: (mode) => set({ bgMode: mode }),
+  setPipEnabled: (enabled) => set({ pipEnabled: enabled }),
+
+  setHold: (callId, onHold) =>
+    set({ holdCallId: callId, isOnHold: onHold }),
+
+  resetFeatures: () =>
+    set({
+      isOnHold: false,
+      holdCallId: null,
+      reactions: [],
+      raisedHands: new Set(),
+      activePoll: null,
+      inCallMessages: [],
+      inCallChatOpen: false,
+      viewMode: "grid",
+      showParticipants: false,
+      showSettings: false,
+      speakingTimes: {},
+      bgMode: "none",
+      pipEnabled: false,
+    }),
+}));
