@@ -334,3 +334,163 @@ export const useCallFeaturesStore = create<CallFeaturesState>((set) => ({
       pipEnabled: false,
     }),
 }));
+
+// ─── Video Quality Store ────────────────────────────────────
+
+interface VideoQualityState {
+  videoProfile: "low" | "medium" | "high" | "hd" | "fullhd" | "4k";
+  setVideoProfile: (profile: VideoQualityState["videoProfile"]) => void;
+  bandwidth: number;
+  setBandwidth: (bps: number) => void;
+  videoCodec: "vp8" | "vp9" | "h264" | "h265";
+  setVideoCodec: (codec: VideoQualityState["videoCodec"]) => void;
+  autoAdjust: boolean;
+  setAutoAdjust: (enabled: boolean) => void;
+  screenShareOptimized: boolean;
+  setScreenShareOptimized: (optimized: boolean) => void;
+}
+
+export const useVideoQualityStore = create<VideoQualityState>((set) => ({
+  videoProfile: "medium",
+  setVideoProfile: (profile) => set({ videoProfile: profile }),
+  bandwidth: 2500,
+  setBandwidth: (bps) => set({ bandwidth: bps }),
+  videoCodec: "vp8",
+  setVideoCodec: (codec) => set({ videoCodec: codec }),
+  autoAdjust: true,
+  setAutoAdjust: (enabled) => set({ autoAdjust: enabled }),
+  screenShareOptimized: false,
+  setScreenShareOptimized: (optimized) => set({ screenShareOptimized: optimized }),
+}));
+
+// ─── Recording Store ───────────────────────────────────────
+
+interface RecordingState {
+  isRecording: boolean;
+  startRecording: () => void;
+  stopRecording: () => void;
+  isPaused: boolean;
+  pauseRecording: () => void;
+  resumeRecording: () => void;
+  recordingDuration: number;
+  setRecordingDuration: (seconds: number) => void;
+  recordings: Array<{ id: string; duration: number; url: string }>;
+  addRecording: (recording: RecordingState["recordings"][0]) => void;
+}
+
+export const useRecordingStore = create<RecordingState>((set) => ({
+  isRecording: false,
+  startRecording: () => set({ isRecording: true, recordingDuration: 0 }),
+  stopRecording: () => set({ isRecording: false }),
+  isPaused: false,
+  pauseRecording: () => set({ isPaused: true }),
+  resumeRecording: () => set({ isPaused: false }),
+  recordingDuration: 0,
+  setRecordingDuration: (seconds) => set({ recordingDuration: seconds }),
+  recordings: [],
+  addRecording: (recording) =>
+    set((state) => ({ recordings: [...state.recordings, recording] })),
+}));
+
+// ─── Whiteboard Store ──────────────────────────────────────
+
+interface WhiteboardElement {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  content?: any;
+}
+
+interface WhiteboardState {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  elements: WhiteboardElement[];
+  addElement: (element: WhiteboardElement) => void;
+  updateElement: (id: string, updates: Partial<WhiteboardElement>) => void;
+  deleteElement: (id: string) => void;
+  clearWhiteboard: () => void;
+  selectedTool: "pen" | "eraser" | "shape" | "text" | "select";
+  setSelectedTool: (tool: WhiteboardState["selectedTool"]) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
+}
+
+export const useWhiteboardStore = create<WhiteboardState>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
+  elements: [],
+  addElement: (element) =>
+    set((state) => ({ elements: [...state.elements, element] })),
+  updateElement: (id, updates) =>
+    set((state) => ({
+      elements: state.elements.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+    })),
+  deleteElement: (id) =>
+    set((state) => ({
+      elements: state.elements.filter((e) => e.id !== id),
+    })),
+  clearWhiteboard: () => set({ elements: [] }),
+  selectedTool: "pen",
+  setSelectedTool: (tool) => set({ selectedTool: tool }),
+  canUndo: false,
+  canRedo: false,
+  undo: () => set({ canRedo: true }),
+  redo: () => set({ canUndo: true }),
+}));
+
+// ─── Notifications Store ───────────────────────────────────
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  type: "call" | "message" | "friend_request" | "system";
+  createdAt: string;
+  isRead: boolean;
+}
+
+interface NotificationsState {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  addNotification: (notif: NotificationItem) => void;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
+  clearNotifications: () => void;
+  pushEnabled: boolean;
+  setPushEnabled: (enabled: boolean) => void;
+  soundEnabled: boolean;
+  setSoundEnabled: (enabled: boolean) => void;
+}
+
+export const useNotificationsStore = create<NotificationsState>((set) => ({
+  notifications: [],
+  unreadCount: 0,
+  addNotification: (notif) =>
+    set((state) => ({
+      notifications: [notif, ...state.notifications].slice(0, 100),
+      unreadCount: state.unreadCount + 1,
+    })),
+  markAsRead: (id) =>
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === id ? { ...n, isRead: true } : n
+      ),
+      unreadCount: Math.max(0, state.unreadCount - 1),
+    })),
+  markAllRead: () =>
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+      unreadCount: 0,
+    })),
+  clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
+  pushEnabled: true,
+  setPushEnabled: (enabled) => set({ pushEnabled: enabled }),
+  soundEnabled: true,
+  setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
+}));

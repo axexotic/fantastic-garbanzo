@@ -687,7 +687,192 @@ export const analytics = {
   translationUsage: () => request<any>("/api/analytics/translation/usage"),
 };
 
+// ─── Video Quality ────────────────────────────────────────
+
+export const video = {
+  // Profile management
+  setProfile: (callId: string, profile: "low" | "medium" | "high" | "hd" | "fullhd" | "4k") =>
+    request("/api/video/profile/set", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, profile }),
+    }),
+  getProfile: (callId: string) =>
+    request<any>(`/api/video/${callId}/profile`),
+  
+  // Bandwidth detection
+  detectBandwidth: (callId: string) =>
+    request<any>("/api/video/bandwidth/detect", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, user_id: "" }),
+    }),
+  reportBandwidth: (callId: string, bitrateKbps: number) =>
+    request("/api/video/bandwidth/report", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, bitrate_kbps: bitrateKbps }),
+    }),
+  
+  // Codec selection
+  setCodec: (callId: string, codec: "vp8" | "vp9" | "h264" | "h265") =>
+    request("/api/video/codec/set", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, codec }),
+    }),
+  getCodec: (callId: string) =>
+    request<any>(`/api/video/${callId}/codec`),
+  getCodecSupport: (callId: string) =>
+    request<any>(`/api/video/${callId}/codec/support`),
+  
+  // Screen share
+  optimizeScreenShare: (callId: string) =>
+    request("/api/video/screen-share/optimize", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId }),
+    }),
+  getScreenShareStatus: (callId: string) =>
+    request<any>(`/api/video/${callId}/screen-share/status`),
+  
+  // Statistics
+  getStats: (callId: string, userId: string) =>
+    request<any>(`/api/video/${callId}/user/${userId}/stats`),
+  requestKeyframe: (callId: string, userId: string) =>
+    request(`/api/video/${callId}/user/${userId}/keyframe`, { method: "POST" }),
+  
+  // Auto-adjust
+  enableAutoAdjust: (callId: string, enabled: boolean) =>
+    request(`/api/video/${callId}/auto-adjust`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
+  
+  // Advanced settings
+  updateSettings: (callId: string, maxWidth: number, maxHeight: number, maxFramerate: number) =>
+    request(`/api/video/${callId}/settings/update`, {
+      method: "POST",
+      body: JSON.stringify({ max_width: maxWidth, max_height: maxHeight, max_framerate: maxFramerate }),
+    }),
+  toggleMirror: (callId: string, enabled: boolean) =>
+    request(`/api/video/${callId}/mirror`, { method: "POST", body: JSON.stringify({ enabled }) }),
+  setBackgroundBlur: (callId: string, strength: number) =>
+    request(`/api/video/${callId}/blur-background`, {
+      method: "POST",
+      body: JSON.stringify({ strength }),
+    }),
+};
+
+// ─── Recording ────────────────────────────────────────────
+
+export const recording = {
+  start: (callId: string, format: "webm" | "mp4" | "wav" | "m4a" = "webm") =>
+    request("/api/recording/start", { method: "POST", body: JSON.stringify({ call_id: callId, format }) }),
+  stop: (callId: string) =>
+    request(`/api/recording/${callId}/stop`, { method: "POST" }),
+  getStatus: (callId: string) =>
+    request<any>(`/api/recording/${callId}/status`),
+  pause: (callId: string) =>
+    request(`/api/recording/${callId}/pause`, { method: "POST" }),
+  resume: (callId: string) =>
+    request(`/api/recording/${callId}/resume`, { method: "POST" }),
+  
+  // Management
+  listRecordings: (skip?: number, limit?: number) =>
+    request<any>(`/api/recording/list?skip=${skip || 0}&limit=${limit || 50}`),
+  getRecording: (callId: string) =>
+    request<any>(`/api/recording/${callId}`),
+  deleteRecording: (callId: string) =>
+    request(`/api/recording/${callId}`, { method: "DELETE" }),
+  getDownloadUrl: (callId: string, expiryHours?: number) =>
+    request<any>(`/api/recording/${callId}/download-url?expiry_hours=${expiryHours || 24}`),
+  getMetadata: (callId: string) =>
+    request<any>(`/api/recording/${callId}/metadata`),
+  
+  // Transcription
+  transcribe: (callId: string, language?: string) =>
+    request("/api/recording/transcribe", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, language: language || "en" }),
+    }),
+  getTranscription: (callId: string) =>
+    request<any>(`/api/recording/${callId}/transcription`),
+  getTranscriptionStatus: (callId: string) =>
+    request<any>(`/api/recording/${callId}/transcription/status`),
+  exportTranscription: (callId: string, format?: string) =>
+    request(`/api/recording/${callId}/transcription/export`, {
+      method: "POST",
+      body: JSON.stringify({ format: format || "srt" }),
+    }),
+};
+
+// ─── Whiteboard ────────────────────────────────────────────
+
+export const whiteboard = {
+  create: (callId: string) =>
+    request("/api/whiteboard/create", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  get: (callId: string) =>
+    request<any>(`/api/whiteboard/${callId}`),
+  
+  // Elements
+  addElement: (callId: string, type: string, content: any, x: number, y: number, width?: number, height?: number) =>
+    request("/api/whiteboard/element/add", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, type, content, x, y, width: width || 100, height: height || 100 }),
+    }),
+  updateElement: (callId: string, elementId: string, updates: any) =>
+    request("/api/whiteboard/element/update", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, element_id: elementId, updates }),
+    }),
+  deleteElement: (callId: string, elementId: string) =>
+    request(`/api/whiteboard/${callId}/element/${elementId}`, { method: "DELETE" }),
+  
+  // Operations
+  clear: (callId: string) =>
+    request(`/api/whiteboard/${callId}/clear`, { method: "POST" }),
+  undo: (callId: string) =>
+    request(`/api/whiteboard/${callId}/undo`, { method: "POST" }),
+  redo: (callId: string) =>
+    request(`/api/whiteboard/${callId}/redo`, { method: "POST" }),
+  
+  // Export
+  export: (callId: string, format?: string) =>
+    request(`/api/whiteboard/${callId}/export`, {
+      method: "POST",
+      body: JSON.stringify({ format: format || "json" }),
+    }),
+  getDownloadUrl: (callId: string, format?: string) =>
+    request<any>(`/api/whiteboard/${callId}/export/download?format=${format || "json"}`),
+  
+  // Collaboration
+  getCollaborators: (callId: string) =>
+    request<any>(`/api/whiteboard/${callId}/collaborators`),
+  updateCursor: (callId: string, x: number, y: number) =>
+    request(`/api/whiteboard/${callId}/cursor`, { method: "POST", body: JSON.stringify({ x, y }) }),
+  
+  // Tools
+  penTool: (callId: string, color?: string, width?: number) =>
+    request("/api/whiteboard/tool/pen", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, color: color || "#000000", width: width || 2 }),
+    }),
+  eraserTool: (callId: string, size?: number) =>
+    request("/api/whiteboard/tool/eraser", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, size: size || 10 }),
+    }),
+  shapeTool: (callId: string, shapeType?: string) =>
+    request("/api/whiteboard/tool/shape", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, shape_type: shapeType || "rectangle" }),
+    }),
+  textTool: (callId: string, fontSize?: number) =>
+    request("/api/whiteboard/tool/text", {
+      method: "POST",
+      body: JSON.stringify({ call_id: callId, font_size: fontSize || 14 }),
+    }),
+  selectionTool: (callId: string) =>
+    request(`/api/whiteboard/${callId}/selection`, { method: "POST" }),
+};
+
 export default {
   auth, friends, chats, rooms, voice, calls, payments, admin, ai,
-  notifications, integrations, callFeatures, security, analytics,
+  notifications, integrations, callFeatures, security, analytics, video, recording, whiteboard,
 };

@@ -10,7 +10,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.config import get_settings
-from app.routers import admin, ai, analytics, auth, call_features, calls, chats, friends, health, integrations, notifications, payments, rooms, security, voice, websocket
+from app.routers import admin, ai, analytics, auth, call_features, calls, chats, friends, health, integrations, notifications, payments, recording, rooms, security, video_features, voice, websocket, whiteboard
 from app.middleware.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,9 @@ def create_app() -> FastAPI:
     app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
     app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
     app.include_router(call_features.router, prefix="/api/calls/features", tags=["call-features"])
+    app.include_router(video_features.router, prefix="/api/video", tags=["video"])
+    app.include_router(recording.router, prefix="/api/recording", tags=["recording"])
+    app.include_router(whiteboard.router, prefix="/api/whiteboard", tags=["whiteboard"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
     app.include_router(security.router, prefix="/api/security", tags=["security"])
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
