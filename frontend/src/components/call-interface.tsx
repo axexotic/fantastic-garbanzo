@@ -42,9 +42,18 @@ import {
   X,
   Plus,
   CheckCircle,
+  Bell,
+  Disc3,
+  PenTool,
 } from "lucide-react";
-import { calls as callsApi, callFeatures } from "@/lib/api";
-import { useCallFeaturesStore } from "@/lib/store";
+import { calls as callsApi, callFeatures, recording, whiteboard, video } from "@/lib/api";
+import {
+  useCallFeaturesStore,
+  useRecordingStore,
+  useWhiteboardStore,
+  useVideoQualityStore,
+  useNotificationsStore,
+} from "@/lib/store";
 
 /* ─── Props ─────────────────────────────────────────────── */
 
@@ -160,10 +169,54 @@ function CallContent({
     clearOldReactions,
   } = useCallFeaturesStore();
 
+  // Batch 2 Stores
+  const {
+    isRecording,
+    isPaused,
+    recordingDuration,
+    startRecording: storeStartRecording,
+    stopRecording: storeStopRecording,
+    pauseRecording: storePauseRecording,
+    resumeRecording: storeResumeRecording,
+    setRecordingDuration: setStoreDuration,
+  } = useRecordingStore();
+
+  const {
+    isOpen: whiteboardOpen,
+    selectedTool,
+    canUndo,
+    canRedo,
+    setIsOpen: setWhiteboardOpen,
+    setSelectedTool,
+    undo,
+    redo,
+  } = useWhiteboardStore();
+
+  const {
+    videoProfile,
+    bandwidth,
+    videoCodec,
+    autoAdjust,
+    setVideoProfile,
+    setBandwidth,
+    setVideoCodec,
+    setAutoAdjust,
+  } = useVideoQualityStore();
+
+  const {
+    notifications,
+    unreadCount,
+    pushEnabled,
+    soundEnabled,
+    addNotification,
+    markAsRead,
+    setPushEnabled,
+    setSoundEnabled,
+  } = useNotificationsStore();
+
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(callType === "video");
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [cameraIndex, setCameraIndex] = useState(0);
@@ -183,8 +236,14 @@ function CallContent({
   const [inCallChatMessage, setInCallChatMessage] = useState("");
   const [reactionEmojis] = useState(["👍", "❤️", "😂", "🔥", "🎉"]);
 
+  // Batch 2 UI States
+  const [showVideoQualityModal, setShowVideoQualityModal] = useState(false);
+  const [showRecordingSettings, setShowRecordingSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const speakingTimerRef = useRef<Record<string, number>>({});
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get video tracks
   const videoTracks = useTracks(
@@ -203,6 +262,20 @@ function CallContent({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [connectionState]);
+
+  // Recording duration timer
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      recordingTimerRef.current = setInterval(() => {
+        setStoreDuration(recordingDuration + 1);
+      }, 1000);
+    } else if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    };
+  }, [isRecording, isPaused, recordingDuration, setStoreDuration]);
 
   // Cleanup reactions every 5 seconds
   useEffect(() => {
@@ -370,6 +443,151 @@ function CallContent({
       console.error("Failed to get suggestion:", e);
     }
   }, [raisedHands, inCallMessages]);
+
+  // Batch 2: Recording
+  const toggleRecording = useCallback(async () => {
+    try {
+      if (isRecording) {
+        await recording.stop(callId);
+        storeStopRecording();
+      } else {
+        await recording.start(callId);
+        storeStartRecording();
+      }
+    } catch (e) {
+      console.error("Failed to toggle recording:", e);
+      addNotification({
+        title: "Recording Error",
+        body: `Failed to ${isRecording ? "stop" : "start"} recording`,
+        type: "error",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    }
+  }, [callId, isRecording, storeStartRecording, storeStopRecording, addNotification]);
+
+  const pauseRecordingHandler = useCallback(async () => {
+    try {
+      await recording.pause(callId);
+      storePauseRecording();
+      addNotification({
+        title: "Recording Paused",
+        body: "Recording has been paused",
+        type: "info",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    } catch (e) {
+      console.error("Failed to pause recording:", e);
+      addNotification({
+        title: "Pause Error",
+        body: "Failed to pause recording",
+        type: "error",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    }
+  }, [callId, storePauseRecording, addNotification]);
+
+  const resumeRecordingHandler = useCallback(async () => {
+    try {
+      await recording.resume(callId);
+      storeResumeRecording();
+      addNotification({
+        title: "Recording Resumed",
+        body: "Recording has been resumed",
+        type: "info",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    } catch (e) {
+      console.error("Failed to resume recording:", e);
+      addNotification({
+        title: "Resume Error",
+        body: "Failed to resume recording",
+        type: "error",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    }
+  }, [callId, storeResumeRecording, addNotification]);
+
+  // Batch 2: Video Quality
+  const setVideoQualityProfile = useCallback(
+    async (profile: "low" | "medium" | "high" | "hd" | "fullhd" | "4k") => {
+      try {
+        await video.setProfile(profile);
+        setVideoProfile(profile);
+        addNotification({
+          title: "Video Quality Updated",
+          body: `Video quality set to ${profile.toUpperCase()}`,
+          type: "success",
+          createdAt: new Date().toISOString(),
+          isRead: false,
+        });
+      } catch (e) {
+        console.error("Failed to set video profile:", e);
+      }
+    },
+    [setVideoProfile, addNotification]
+  );
+
+  const detectBandwidthHandler = useCallback(async () => {
+    try {
+      const result = await video.detectBandwidth();
+      setBandwidth(result.bandwidth);
+      setVideoQualityProfile(result.recommended_profile as any);
+    } catch (e) {
+      console.error("Failed to detect bandwidth:", e);
+      addNotification({
+        title: "Bandwidth Detection Failed",
+        body: "Could not auto-detect bandwidth",
+        type: "error",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    }
+  }, [setBandwidth, setVideoQualityProfile, addNotification]);
+
+  // Batch 2: Whiteboard
+  const toggleWhiteboard = useCallback(async () => {
+    try {
+      if (!whiteboardOpen) {
+        await whiteboard.create(callId);
+        setWhiteboardOpen(true);
+        addNotification({
+          title: "Whiteboard Started",
+          body: "Collaborative whiteboard opened",
+          type: "success",
+          createdAt: new Date().toISOString(),
+          isRead: false,
+        });
+      } else {
+        setWhiteboardOpen(false);
+      }
+    } catch (e) {
+      console.error("Failed to toggle whiteboard:", e);
+      addNotification({
+        title: "Whiteboard Error",
+        body: "Failed to open whiteboard",
+        type: "error",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      });
+    }
+  }, [callId, whiteboardOpen, setWhiteboardOpen, addNotification]);
+
+  // Batch 2: Notifications
+  const toggleNotifications = useCallback(() => {
+    setShowNotifications(!showNotifications);
+  }, [showNotifications]);
+
+  const handleNotificationRead = useCallback(
+    (index: number) => {
+      markAsRead(index);
+    },
+    [markAsRead]
+  );
 
   const handleLeave = useCallback(async () => {
     try {
@@ -1006,16 +1224,136 @@ function CallContent({
           </button>
         )}
 
-        {/* Recording */}
+        {/* Recording - Batch 2 */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleRecording}
+            className={`rounded-full p-3 transition-colors ${
+              isRecording ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+            title={isRecording ? "Stop recording" : "Start recording"}
+          >
+            <Disc3 className="h-5 w-5" />
+          </button>
+          {isRecording && (
+            <>
+              <span className="text-xs font-medium text-red-500">{formatDuration(recordingDuration)}</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={pauseRecordingHandler}
+                  disabled={isPaused}
+                  className="rounded p-1 text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground"
+                  title="Pause recording"
+                >
+                  <Pause className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={resumeRecordingHandler}
+                  disabled={!isPaused}
+                  className="rounded p-1 text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground"
+                  title="Resume recording"
+                >
+                  <Play className="h-3 w-3" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Whiteboard - Batch 2 */}
         <button
-          onClick={() => setIsRecording(!isRecording)}
+          onClick={toggleWhiteboard}
           className={`rounded-full p-3 transition-colors ${
-            isRecording ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
+            whiteboardOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title={isRecording ? "Stop recording" : "Record"}
+          title={whiteboardOpen ? "Close whiteboard" : "Open whiteboard"}
         >
-          {isRecording ? <PlayCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
+          <PenTool className="h-5 w-5" />
         </button>
+
+        {/* Video Quality - Batch 2 */}
+        <div className="relative group">
+          <button
+            onClick={() => setShowVideoQualityModal(!showVideoQualityModal)}
+            className={`rounded-full p-3 transition-colors ${
+              showVideoQualityModal ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+            title="Video quality"
+          >
+            <BarChart3 className="h-5 w-5" />
+          </button>
+          {showVideoQualityModal && (
+            <div className="absolute bottom-16 right-0 bg-foreground/95 text-background rounded-lg shadow-lg p-4 min-w-[200px] z-50">
+              <p className="text-xs font-semibold mb-2">Video Quality</p>
+              <div className="space-y-1">
+                {(["low", "medium", "high", "hd", "fullhd", "4k"] as const).map((profile) => (
+                  <button
+                    key={profile}
+                    onClick={() => {
+                      setVideoQualityProfile(profile);
+                      setShowVideoQualityModal(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs rounded ${
+                      videoProfile === profile ? "bg-primary text-primary-foreground" : "hover:bg-primary/20"
+                    }`}
+                  >
+                    {profile.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={detectBandwidthHandler}
+                className="w-full mt-2 px-3 py-2 text-xs text-center rounded bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Auto Detect
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Notifications - Batch 2 */}
+        <div className="relative">
+          <button
+            onClick={toggleNotifications}
+            className={`rounded-full p-3 transition-colors relative ${
+              showNotifications ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <div className="absolute bottom-16 right-0 bg-foreground/95 text-background rounded-lg shadow-lg p-4 min-w-[300px] max-h-80 overflow-y-auto z-50">
+              <p className="text-xs font-semibold mb-2">Notifications ({unreadCount})</p>
+              {notifications.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No notifications</p>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map((notif, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleNotificationRead(idx)}
+                      className={`p-2 text-xs rounded cursor-pointer ${
+                        notif.isRead
+                          ? "bg-secondary/50 opacity-60"
+                          : "bg-primary/20 hover:bg-primary/30"
+                      }`}
+                    >
+                      <p className="font-medium">{notif.title}</p>
+                      <p className="opacity-80">{notif.body}</p>
+                      <p className="text-xs opacity-50 mt-1">{new Date(notif.createdAt).toLocaleTimeString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Settings */}
         <button
