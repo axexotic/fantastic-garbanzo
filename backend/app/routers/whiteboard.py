@@ -1,7 +1,7 @@
 """Whiteboard router — collaborative drawing, shapes, persistence."""
 
 from fastapi import APIRouter, Depends
-from app.models.database import User
+from app.models.models import User
 from app.dependencies import get_current_user
 from app.services.whiteboard_service import WhiteboardService
 from pydantic import BaseModel

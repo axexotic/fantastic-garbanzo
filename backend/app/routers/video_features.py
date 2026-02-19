@@ -1,7 +1,7 @@
 """Video features router — quality, codec, bandwidth, screen share."""
 
 from fastapi import APIRouter, Depends
-from app.models.database import User
+from app.models.models import User
 from app.dependencies import get_current_user
 from app.services.video_quality_service import VideoQualityService, VideoProfile, VideoCodec
 from pydantic import BaseModel
