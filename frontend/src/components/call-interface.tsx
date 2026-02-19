@@ -457,9 +457,10 @@ function CallContent({
     } catch (e) {
       console.error("Failed to toggle recording:", e);
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Recording Error",
         body: `Failed to ${isRecording ? "stop" : "start"} recording`,
-        type: "error",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -471,18 +472,20 @@ function CallContent({
       await recording.pause(callId);
       storePauseRecording();
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Recording Paused",
         body: "Recording has been paused",
-        type: "info",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
     } catch (e) {
       console.error("Failed to pause recording:", e);
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Pause Error",
         body: "Failed to pause recording",
-        type: "error",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -494,9 +497,10 @@ function CallContent({
       await recording.resume(callId);
       storeResumeRecording();
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Recording Resumed",
         body: "Recording has been resumed",
-        type: "info",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -505,7 +509,7 @@ function CallContent({
       addNotification({
         title: "Resume Error",
         body: "Failed to resume recording",
-        type: "error",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -519,9 +523,10 @@ function CallContent({
         await video.setProfile(profile);
         setVideoProfile(profile);
         addNotification({
+          id: `notif-${Date.now()}`,
           title: "Video Quality Updated",
           body: `Video quality set to ${profile.toUpperCase()}`,
-          type: "success",
+          type: "system",
           createdAt: new Date().toISOString(),
           isRead: false,
         });
@@ -540,9 +545,10 @@ function CallContent({
     } catch (e) {
       console.error("Failed to detect bandwidth:", e);
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Bandwidth Detection Failed",
         body: "Could not auto-detect bandwidth",
-        type: "error",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -556,9 +562,10 @@ function CallContent({
         await whiteboard.create(callId);
         setWhiteboardOpen(true);
         addNotification({
+          id: `notif-${Date.now()}`,
           title: "Whiteboard Started",
           body: "Collaborative whiteboard opened",
-          type: "success",
+          type: "system",
           createdAt: new Date().toISOString(),
           isRead: false,
         });
@@ -568,9 +575,10 @@ function CallContent({
     } catch (e) {
       console.error("Failed to toggle whiteboard:", e);
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Whiteboard Error",
         body: "Failed to open whiteboard",
-        type: "error",
+        type: "system",
         createdAt: new Date().toISOString(),
         isRead: false,
       });
@@ -583,8 +591,8 @@ function CallContent({
   }, [showNotifications]);
 
   const handleNotificationRead = useCallback(
-    (index: number) => {
-      markAsRead(index);
+    (id: string) => {
+      markAsRead(id);
     },
     [markAsRead]
   );
@@ -1334,10 +1342,10 @@ function CallContent({
                 <p className="text-xs text-muted-foreground">No notifications</p>
               ) : (
                 <div className="space-y-2">
-                  {notifications.map((notif, idx) => (
+                  {notifications.map((notif) => (
                     <div
-                      key={idx}
-                      onClick={() => handleNotificationRead(idx)}
+                      key={notif.id}
+                      onClick={() => handleNotificationRead(notif.id)}
                       className={`p-2 text-xs rounded cursor-pointer ${
                         notif.isRead
                           ? "bg-secondary/50 opacity-60"
