@@ -507,6 +507,7 @@ function CallContent({
     } catch (e) {
       console.error("Failed to resume recording:", e);
       addNotification({
+        id: `notif-${Date.now()}`,
         title: "Resume Error",
         body: "Failed to resume recording",
         type: "system",
