@@ -1,7 +1,7 @@
 """Recording router — start, stop, playback, transcription."""
 
 from fastapi import APIRouter, Depends
-from app.models.database import User
+from app.models.models import User
 from app.dependencies import get_current_user
 from app.services.recording_service import RecordingService, RecordingFormat
 from pydantic import BaseModel
