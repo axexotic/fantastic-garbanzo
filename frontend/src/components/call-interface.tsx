@@ -521,7 +521,7 @@ function CallContent({
   const setVideoQualityProfile = useCallback(
     async (profile: "low" | "medium" | "high" | "hd" | "fullhd" | "4k") => {
       try {
-        await video.setProfile(profile);
+        await video.setProfile(callId, profile);
         setVideoProfile(profile);
         addNotification({
           id: `notif-${Date.now()}`,
@@ -535,12 +535,12 @@ function CallContent({
         console.error("Failed to set video profile:", e);
       }
     },
-    [setVideoProfile, addNotification]
+    [callId, setVideoProfile, addNotification]
   );
 
   const detectBandwidthHandler = useCallback(async () => {
     try {
-      const result = await video.detectBandwidth();
+      const result = await video.detectBandwidth(callId);
       setBandwidth(result.bandwidth);
       setVideoQualityProfile(result.recommended_profile as any);
     } catch (e) {
@@ -554,7 +554,7 @@ function CallContent({
         isRead: false,
       });
     }
-  }, [setBandwidth, setVideoQualityProfile, addNotification]);
+  }, [callId, setBandwidth, setVideoQualityProfile, addNotification]);
 
   // Batch 2: Whiteboard
   const toggleWhiteboard = useCallback(async () => {
