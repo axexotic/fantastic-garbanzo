@@ -58,7 +58,11 @@ class Settings(BaseSettings):
     # Stripe
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    stripe_price_id_pro: str = ""  # Monthly pro plan price ID
+
+    # Pricing
+    chat_plan_price_cents: int = 1500  # $15 one-time lifetime chat
+    credit_cost_pipeline: int = 4   # per audio chunk (STT+translate+TTS)
+    credit_cost_voice_clone: int = 50  # per voice clone
 
     # Monitoring
     sentry_dsn: str = ""

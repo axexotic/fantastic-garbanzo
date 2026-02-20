@@ -1,5 +1,6 @@
 /**
  * API client — typed fetch wrapper for the backend.
+ * Supports Bearer token auth (backward compat) + HTTP-only cookie auth + CSRF.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -10,6 +11,48 @@ class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+/**
+ * Read the CSRF token from the csrf_token cookie (non-httponly).
+ */
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Try to silently refresh the access token using the refresh cookie.
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  // Deduplicate concurrent refresh attempts
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      // Update localStorage token for backward compat
+      if (data.token && typeof window !== "undefined") {
+        localStorage.setItem("token", data.token);
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 async function request<T>(
@@ -28,10 +71,38 @@ async function request<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  // Attach CSRF token for state-changing requests
+  const method = (options.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrf = getCsrfToken();
+    if (csrf) {
+      headers["X-CSRF-Token"] = csrf;
+    }
+  }
+
+  let res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    credentials: "include", // Send cookies
   });
+
+  // If 401 and we have a refresh cookie, try refreshing
+  if (res.status === 401 && path !== "/api/auth/refresh" && path !== "/api/auth/login") {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      // Retry the original request with the new token
+      const newToken =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+      }
+      res = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+    }
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
@@ -75,6 +146,48 @@ export const auth = {
 
   updateProfile: (data: Partial<UserProfile>) =>
     request<UserProfile>("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) }),
+
+  logout: () => request<{ message: string }>("/api/auth/logout", { method: "POST" }),
+
+  refresh: () => request<{ token: string }>("/api/auth/refresh", { method: "POST" }),
+
+  uploadAvatar: async (file: File): Promise<{ avatar_url: string; user: UserProfile }> => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+
+    const res = await fetch(`${API_URL}/api/auth/avatar`, {
+      method: "POST",
+      headers,
+      body: formData,
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(body.detail || res.statusText, res.status);
+    }
+    return res.json();
+  },
+
+  deleteAvatar: () =>
+    request<{ avatar_url: string; message: string }>("/api/auth/avatar", { method: "DELETE" }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
+  deleteAccount: (password: string) =>
+    request<{ message: string }>("/api/auth/delete-account", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
 };
 
 // ─── Friends ───────────────────────────────────────────────
@@ -327,27 +440,48 @@ export const calls = {
     request<{ calls: CallInfo[]; total: number }>("/api/calls/"),
 };
 
-// ─── Payments ──────────────────────────────────────────────
+// ─── Payments (Chat Plan + Voice Credits) ──────────────────
 
-export interface SubscriptionInfo {
-  plan: string;
-  status: string;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
+export interface BalanceInfo {
+  chat_plan_purchased: boolean;
+  balance_cents: number;
+  balance_display: string;
+  total_purchased_cents: number;
+  total_used_cents: number;
+}
+
+export interface CreditTransaction {
+  id: string;
+  amount_cents: number;
+  transaction_type: string;
+  description: string;
+  created_at: string;
+}
+
+export interface TransactionList {
+  transactions: CreditTransaction[];
+  total: number;
 }
 
 export const payments = {
-  getSubscription: () =>
-    request<SubscriptionInfo>("/api/payments/subscription"),
+  getBalance: () =>
+    request<BalanceInfo>("/api/payments/balance"),
 
-  createCheckout: (priceId?: string) =>
-    request<{ checkout_url: string }>("/api/payments/checkout", {
+  buyChatPlan: () =>
+    request<{ checkout_url: string }>("/api/payments/buy-chat-plan", {
       method: "POST",
-      body: JSON.stringify({ price_id: priceId }),
     }),
 
-  openPortal: () =>
-    request<{ portal_url: string }>("/api/payments/portal", { method: "POST" }),
+  buyCredits: (amountCents: number) =>
+    request<{ checkout_url: string }>("/api/payments/buy-credits", {
+      method: "POST",
+      body: JSON.stringify({ amount_cents: amountCents }),
+    }),
+
+  getTransactions: (limit = 50, offset = 0) =>
+    request<TransactionList>(
+      `/api/payments/transactions?limit=${limit}&offset=${offset}`
+    ),
 };
 
 // ─── Admin ─────────────────────────────────────────────────
@@ -431,6 +565,10 @@ export interface NotificationPrefs {
   push_calls: boolean;
   push_friend_requests: boolean;
   sound_enabled: boolean;
+  ringtone: string;
+  notification_tone: string;
+  group_tone: string;
+  vibration_enabled: boolean;
   dnd_enabled: boolean;
   dnd_start: string;
   dnd_end: string;
@@ -441,6 +579,49 @@ export const notifications = {
 
   updatePrefs: (data: Partial<NotificationPrefs>) =>
     request<NotificationPrefs>("/api/notifications/", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+};
+
+// ─── User Preferences ─────────────────────────────────────
+
+export interface UserPreferences {
+  // Privacy
+  show_last_seen: string;
+  show_profile_photo: string;
+  show_read_receipts: boolean;
+  two_factor_enabled: boolean;
+  active_sessions_limit: number;
+  // Chat
+  chat_font_size: string;
+  chat_wallpaper: string;
+  message_grouping: boolean;
+  send_with_enter: boolean;
+  auto_translate_messages: boolean;
+  // Advanced
+  auto_download_media: boolean;
+  auto_download_max_size_mb: number;
+  data_saver_mode: boolean;
+  proxy_enabled: boolean;
+  // Battery
+  reduce_animations: boolean;
+  power_saving_mode: boolean;
+  auto_play_gifs: boolean;
+  // Devices
+  preferred_audio_input: string;
+  preferred_audio_output: string;
+  preferred_video_input: string;
+  echo_cancellation: boolean;
+  noise_suppression: boolean;
+  auto_gain_control: boolean;
+}
+
+export const preferences = {
+  get: () => request<UserPreferences>("/api/preferences/"),
+
+  update: (data: Partial<UserPreferences>) =>
+    request<UserPreferences>("/api/preferences/", {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -874,5 +1055,5 @@ export const whiteboard = {
 
 export default {
   auth, friends, chats, rooms, voice, calls, payments, admin, ai,
-  notifications, integrations, callFeatures, security, analytics, video, recording, whiteboard,
+  notifications, preferences, integrations, callFeatures, security, analytics, video, recording, whiteboard,
 };

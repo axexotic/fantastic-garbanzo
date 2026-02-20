@@ -20,6 +20,10 @@ class NotificationPrefsResponse(BaseModel):
     push_calls: bool
     push_friend_requests: bool
     sound_enabled: bool
+    ringtone: str
+    notification_tone: str
+    group_tone: str
+    vibration_enabled: bool
     dnd_enabled: bool
     dnd_start: str
     dnd_end: str
@@ -33,6 +37,10 @@ class UpdateNotificationPrefsRequest(BaseModel):
     push_calls: bool | None = None
     push_friend_requests: bool | None = None
     sound_enabled: bool | None = None
+    ringtone: str | None = None
+    notification_tone: str | None = None
+    group_tone: str | None = None
+    vibration_enabled: bool | None = None
     dnd_enabled: bool | None = None
     dnd_start: str | None = None
     dnd_end: str | None = None
@@ -47,6 +55,10 @@ def _prefs_to_dict(p: NotificationPreference) -> dict:
         "push_calls": p.push_calls,
         "push_friend_requests": p.push_friend_requests,
         "sound_enabled": p.sound_enabled,
+        "ringtone": p.ringtone or "default",
+        "notification_tone": p.notification_tone or "default",
+        "group_tone": p.group_tone or "default",
+        "vibration_enabled": p.vibration_enabled if p.vibration_enabled is not None else True,
         "dnd_enabled": p.dnd_enabled,
         "dnd_start": p.dnd_start or "22:00",
         "dnd_end": p.dnd_end or "08:00",

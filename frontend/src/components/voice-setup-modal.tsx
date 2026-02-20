@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, Mic, Volume2, Globe, Sparkles, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
+import { X, Mic, Volume2, Globe, Sparkles, ChevronRight, Loader2, CheckCircle2, Shield } from "lucide-react";
 import { VoiceRecorder } from "./voice-recorder";
 import { voice as voiceApi } from "@/lib/api";
+import Link from "next/link";
 
 interface VoiceSetupModalProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ type Step = "intro" | "record" | "processing" | "success";
 export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
   const [step, setStep] = useState<Step>("intro");
   const [error, setError] = useState<string | null>(null);
+  const [voiceConsent, setVoiceConsent] = useState(false);
 
   const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
     setStep("processing");
@@ -103,11 +105,41 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
               </div>
             </div>
 
+            {/* Voice Data Consent */}
+            <div className="mb-4 rounded-xl border border-border bg-secondary/20 p-4">
+              <div className="flex items-start gap-3">
+                <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Voice Data Consent</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Your voice recording will be processed by ElevenLabs for voice cloning.
+                    The voice profile is stored securely and used only for call translation.
+                    You can delete it anytime in Settings.
+                  </p>
+                  <label className="mt-3 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={voiceConsent}
+                      onChange={(e) => setVoiceConsent(e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    <span className="text-muted-foreground">
+                      I consent to recording and processing my voice data per the{" "}
+                      <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                        Privacy Policy
+                      </Link>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => setStep("record")}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90"
+                disabled={!voiceConsent}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
               >
                 Set Up Voice Profile
                 <ChevronRight className="h-5 w-5" />

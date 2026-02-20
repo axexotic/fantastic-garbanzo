@@ -4,6 +4,7 @@ Translation Pipeline — the core engine.
 Flow: Audio In → STT (Deepgram) → Translate (GPT-4/Claude) → TTS (ElevenLabs) → Audio Out
 
 All stages stream so we hit <500ms end-to-end latency.
+Credit check: user must have credits before processing.
 """
 
 import asyncio
@@ -14,6 +15,7 @@ from app.services.stt_service import stt_service
 from app.services.translation_service import translation_service
 from app.services.tts_service import tts_service
 from app.services.logging_service import logging_service
+from app.services.credit_service import credit_service
 
 
 @dataclass
@@ -80,14 +82,26 @@ class TranslationPipeline:
         audio_data: bytes,
         context: TranslationContext,
         voice_id: str | None = None,
+        user_id: str | None = None,
+        db=None,
     ) -> tuple[bytes, str, PipelineMetrics]:
         """
         Process a chunk of audio through the full pipeline.
+        If user_id and db are provided, deducts credits first.
 
         Returns:
             (translated_audio, translated_text, metrics)
+
+        Raises:
+            ValueError: if user has insufficient credits
         """
         metrics = PipelineMetrics(total_start=time.time())
+
+        # --- Credit check ---
+        if user_id and db:
+            has_credits = await credit_service.has_sufficient_credits(user_id, db)
+            if not has_credits:
+                raise ValueError("Insufficient credits")
 
         # --- Stage 1: Speech-to-Text ---
         metrics.stt_start = time.time()
@@ -128,6 +142,16 @@ class TranslationPipeline:
         metrics.tts_end = time.time()
 
         metrics.total_end = time.time()
+
+        # --- Deduct credits after successful processing ---
+        if user_id and db:
+            await credit_service.deduct_pipeline(
+                user_id=user_id,
+                db=db,
+                source_lang=context.source_language,
+                target_lang=context.target_language,
+            )
+
         return audio_out, translated_text, metrics
 
     async def _log_translation(
@@ -151,15 +175,27 @@ class TranslationPipeline:
         audio_data: bytes,
         context: TranslationContext,
         voice_id: str | None = None,
+        user_id: str | None = None,
+        db=None,
     ):
         """
         Streaming pipeline: yields audio chunks as soon as they're available.
         This is how we hit <500ms — we don't wait for full sentences.
+        If user_id and db are provided, deducts credits first.
 
         Yields:
             dict with keys: "type" (text|audio|metrics), "data" (the payload)
+
+        Raises:
+            ValueError: if user has insufficient credits
         """
         total_start = time.time()
+
+        # --- Credit check ---
+        if user_id and db:
+            has_credits = await credit_service.has_sufficient_credits(user_id, db)
+            if not has_credits:
+                raise ValueError("Insufficient credits")
 
         # Stage 1: STT
         stt_start = time.time()
@@ -203,6 +239,15 @@ class TranslationPipeline:
 
         tts_end = time.time()
         total_end = time.time()
+
+        # --- Deduct credits after successful processing ---
+        if user_id and db:
+            await credit_service.deduct_pipeline(
+                user_id=user_id,
+                db=db,
+                source_lang=context.source_language,
+                target_lang=context.target_language,
+            )
 
         yield {
             "type": "metrics",

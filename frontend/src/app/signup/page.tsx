@@ -38,6 +38,7 @@ export default function SignupPage() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const update = (field: string, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -128,7 +129,7 @@ export default function SignupPage() {
               onChange={(e) => update("password", e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
-              minLength={6}
+              minLength={8}
               required
             />
           </div>
@@ -150,9 +151,29 @@ export default function SignupPage() {
             </select>
           </div>
 
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 rounded border-border"
+              required
+            />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" className="text-primary hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" target="_blank" className="text-primary hover:underline">
+                Privacy Policy
+              </Link>
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !agreedToTerms}
             className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
           >
             {isLoading ? "Creating account..." : "Sign Up"}

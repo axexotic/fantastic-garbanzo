@@ -12,6 +12,7 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Chat, ChatMember, Friendship, Message, User
 from app.services.translation_service import translation_service
+from app.services.credit_service import credit_service
 from app.routers.websocket import notify_group_update, manager
 
 router = APIRouter()
@@ -333,8 +334,16 @@ async def send_message(
 ):
     """
     Send a message in a chat.
+    Requires $15 lifetime chat plan.
     Automatically translates to all members' languages.
     """
+    # Gate: check chat plan
+    if not await credit_service.has_chat_plan(current_user.id, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Chat plan required. Purchase the $15 lifetime chat plan to send messages.",
+        )
+
     chat, membership = await get_chat_with_access(chat_id, current_user.id, db)
     source_lang = membership.language
 

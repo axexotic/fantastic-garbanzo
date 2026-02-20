@@ -1,4 +1,4 @@
-"""Stripe service — subscription management, webhooks."""
+"""Stripe service — one-time credit purchases, webhooks."""
 
 import logging
 
@@ -12,7 +12,7 @@ STRIPE_API = "https://api.stripe.com/v1"
 
 
 class StripeService:
-    """Stripe API client for subscription management."""
+    """Stripe API client for credit-based payments (no subscriptions)."""
 
     def __init__(self):
         self._settings = get_settings()
@@ -50,12 +50,12 @@ class StripeService:
             logger.error("Stripe create_customer error: %s", resp.text)
             return None
 
-    # ─── Checkout Session ────────────────────────────────────
+    # ─── Chat Plan ($15 lifetime) ─────────────────────────────
 
-    async def create_checkout_session(
-        self, customer_id: str, price_id: str, user_id: str
+    async def create_chat_plan_checkout(
+        self, customer_id: str, user_id: str
     ) -> str | None:
-        """Create a Stripe Checkout session. Returns the session URL."""
+        """Create a Stripe Checkout for the $15 lifetime chat plan."""
         if not self._enabled():
             return None
 
@@ -65,58 +65,74 @@ class StripeService:
                 f"{STRIPE_API}/checkout/sessions",
                 headers=self._headers,
                 data={
-                    "mode": "subscription",
+                    "mode": "payment",
                     "customer": customer_id,
-                    "line_items[0][price]": price_id,
+                    "line_items[0][price_data][currency]": "usd",
+                    "line_items[0][price_data][unit_amount]": str(settings.chat_plan_price_cents),
+                    "line_items[0][price_data][product_data][name]": "FlaskAI Chat — Lifetime Access",
+                    "line_items[0][price_data][product_data][description]": "One-time $15 purchase for unlimited text messaging forever",
                     "line_items[0][quantity]": "1",
-                    "success_url": f"{settings.frontend_url}/dashboard?subscription=success",
-                    "cancel_url": f"{settings.frontend_url}/dashboard?subscription=canceled",
+                    "payment_intent_data[metadata][user_id]": user_id,
+                    "payment_intent_data[metadata][purchase_type]": "chat_plan",
                     "metadata[user_id]": user_id,
+                    "metadata[purchase_type]": "chat_plan",
+                    "success_url": f"{settings.frontend_url}/dashboard?chat_plan=success",
+                    "cancel_url": f"{settings.frontend_url}/dashboard?chat_plan=canceled",
+                },
+                timeout=15.0,
+            )
+            if resp.status_code == 200:
+                return resp.json().get("url")
+            logger.error("Stripe chat plan checkout error: %s", resp.text)
+            return None
+
+    # ─── Credit Checkout (one-time payment) ───────────────────
+
+    async def create_credit_checkout(
+        self, customer_id: str, amount_cents: int, user_id: str
+    ) -> str | None:
+        """
+        Create a Stripe Checkout session for a one-time credit purchase.
+        amount_cents: minimum 100 ($1.00).
+        Returns the session URL.
+        """
+        if not self._enabled():
+            return None
+
+        if amount_cents < 100:
+            logger.error("Credit purchase below minimum: %d cents", amount_cents)
+            return None
+
+        settings = self._settings
+        # Build dollar string for display (e.g. "$5.00")
+        amount_display = f"${amount_cents / 100:.2f}"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{STRIPE_API}/checkout/sessions",
+                headers=self._headers,
+                data={
+                    "mode": "payment",
+                    "customer": customer_id,
+                    "line_items[0][price_data][currency]": "usd",
+                    "line_items[0][price_data][unit_amount]": str(amount_cents),
+                    "line_items[0][price_data][product_data][name]": f"FlaskAI Credits — {amount_display}",
+                    "line_items[0][price_data][product_data][description]": "Pay-as-you-go credits for translation, STT, and TTS services",
+                    "line_items[0][quantity]": "1",
+                    "payment_intent_data[metadata][user_id]": user_id,
+                    "payment_intent_data[metadata][purchase_type]": "credits",
+                    "payment_intent_data[metadata][credit_cents]": str(amount_cents),
+                    "metadata[user_id]": user_id,
+                    "metadata[purchase_type]": "credits",
+                    "metadata[credit_cents]": str(amount_cents),
+                    "success_url": f"{settings.frontend_url}/dashboard?credits=success&amount={amount_cents}",
+                    "cancel_url": f"{settings.frontend_url}/dashboard?credits=canceled",
                 },
                 timeout=15.0,
             )
             if resp.status_code == 200:
                 return resp.json().get("url")
             logger.error("Stripe checkout error: %s", resp.text)
-            return None
-
-    # ─── Customer Portal ─────────────────────────────────────
-
-    async def create_portal_session(self, customer_id: str) -> str | None:
-        """Create a Stripe Customer Portal session for managing subscriptions."""
-        if not self._enabled():
-            return None
-
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{STRIPE_API}/billing_portal/sessions",
-                headers=self._headers,
-                data={
-                    "customer": customer_id,
-                    "return_url": f"{self._settings.frontend_url}/dashboard",
-                },
-                timeout=10.0,
-            )
-            if resp.status_code == 200:
-                return resp.json().get("url")
-            logger.error("Stripe portal error: %s", resp.text)
-            return None
-
-    # ─── Subscription Info ───────────────────────────────────
-
-    async def get_subscription(self, subscription_id: str) -> dict | None:
-        """Retrieve subscription details from Stripe."""
-        if not self._enabled():
-            return None
-
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{STRIPE_API}/subscriptions/{subscription_id}",
-                headers=self._headers,
-                timeout=10.0,
-            )
-            if resp.status_code == 200:
-                return resp.json()
             return None
 
     # ─── Webhook Verification ────────────────────────────────

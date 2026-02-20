@@ -230,26 +230,42 @@ class VoiceProfile(Base):
     user = relationship("User", back_populates="voice_profile")
 
 
-# ─── Subscriptions ──────────────────────────────────────────
+# ─── Credits System ─────────────────────────────────────────
 
-class Subscription(Base):
-    """Stripe subscription for a user — free, pro, enterprise."""
+class CreditBalance(Base):
+    """User's payment state — $15 lifetime chat + pay-as-you-go voice credits."""
 
-    __tablename__ = "subscriptions"
+    __tablename__ = "credit_balances"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
     stripe_customer_id = Column(String(255), unique=True)
-    stripe_subscription_id = Column(String(255), unique=True)
-    plan = Column(String(50), default="free")  # free, pro, enterprise
-    status = Column(String(50), default="active")  # active, canceled, past_due, trialing
-    current_period_start = Column(DateTime)
-    current_period_end = Column(DateTime)
-    cancel_at_period_end = Column(Boolean, default=False)
+    chat_plan_purchased = Column(Boolean, default=False)  # $15 lifetime chat access
+    balance_cents = Column(Integer, default=0)  # voice/video credits in cents ($1 = 100)
+    total_purchased_cents = Column(Integer, default=0)  # lifetime credit purchases
+    total_used_cents = Column(Integer, default=0)  # lifetime voice/video usage
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", backref="subscription")
+    user = relationship("User", backref="credit_balance")
+    transactions = relationship("CreditTransaction", back_populates="credit_balance")
+
+
+class CreditTransaction(Base):
+    """Ledger of all credit purchases and deductions."""
+
+    __tablename__ = "credit_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    credit_balance_id = Column(UUID(as_uuid=True), ForeignKey("credit_balances.id"), nullable=False)
+    amount_cents = Column(Integer, nullable=False)  # positive = purchase, negative = usage
+    transaction_type = Column(String(50), nullable=False)  # purchase, stt, translation, tts, voice_clone, refund
+    description = Column(String(500), default="")
+    stripe_payment_intent_id = Column(String(255))  # only for purchases
+    metadata_json = Column(JSONB, default={})  # extra context (language pair, call_id, etc.)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    credit_balance = relationship("CreditBalance", back_populates="transactions")
 
 
 # ─── Translation Logs ───────────────────────────────────────
@@ -310,6 +326,10 @@ class NotificationPreference(Base):
 
     # Sound
     sound_enabled = Column(Boolean, default=True)
+    ringtone = Column(String(50), default="default")       # default, classic, digital, melody, urgent, silent
+    notification_tone = Column(String(50), default="default")  # default, chime, ding, pop, drop, bubble, silent
+    group_tone = Column(String(50), default="default")        # default, chime, ding, pop, drop, bubble, silent
+    vibration_enabled = Column(Boolean, default=True)
 
     # Do Not Disturb
     dnd_enabled = Column(Boolean, default=False)
@@ -320,3 +340,52 @@ class NotificationPreference(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", backref="notification_preferences")
+
+
+# ─── User Preferences (Privacy, Chat, Advanced) ────────────
+
+class UserPreference(Base):
+    """Per-user settings for privacy, chat appearance, advanced options."""
+
+    __tablename__ = "user_preferences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+
+    # Privacy & Security
+    show_last_seen = Column(String(20), default="everyone")  # everyone, contacts, nobody
+    show_profile_photo = Column(String(20), default="everyone")
+    show_read_receipts = Column(Boolean, default=True)
+    two_factor_enabled = Column(Boolean, default=False)
+    active_sessions_limit = Column(Integer, default=5)
+
+    # Chat Settings
+    chat_font_size = Column(String(10), default="medium")  # small, medium, large
+    chat_wallpaper = Column(String(100), default="default")
+    message_grouping = Column(Boolean, default=True)
+    send_with_enter = Column(Boolean, default=True)
+    auto_translate_messages = Column(Boolean, default=True)
+
+    # Advanced
+    auto_download_media = Column(Boolean, default=True)
+    auto_download_max_size_mb = Column(Integer, default=10)
+    data_saver_mode = Column(Boolean, default=False)
+    proxy_enabled = Column(Boolean, default=False)
+
+    # Battery & Animations
+    reduce_animations = Column(Boolean, default=False)
+    power_saving_mode = Column(Boolean, default=False)
+    auto_play_gifs = Column(Boolean, default=True)
+
+    # Speakers & Camera defaults
+    preferred_audio_input = Column(String(255), default="")
+    preferred_audio_output = Column(String(255), default="")
+    preferred_video_input = Column(String(255), default="")
+    echo_cancellation = Column(Boolean, default=True)
+    noise_suppression = Column(Boolean, default=True)
+    auto_gain_control = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", backref="user_preferences")

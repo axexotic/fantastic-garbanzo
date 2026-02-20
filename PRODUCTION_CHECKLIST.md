@@ -33,11 +33,11 @@ FRONTEND_URL=https://yourdomain.com
 ## 🔒 Security Hardening
 
 ### 1. Authentication
-- [ ] Use HTTP-only cookies instead of localStorage for tokens
-- [ ] Implement refresh token rotation
-- [ ] Add rate limiting (slowapi for FastAPI)
-- [ ] Add CSRF protection
-- [ ] Validate all user inputs
+- [x] Use HTTP-only cookies instead of localStorage for tokens
+- [x] Implement refresh token rotation
+- [x] Add rate limiting (Redis-backed middleware + nginx)
+- [x] Add CSRF protection (double-submit cookie)
+- [x] Validate all user inputs (Pydantic Field validators)
 
 ### 2. API Security
 ```python
@@ -57,7 +57,7 @@ async def clone_voice(...):
 
 ### 3. Environment
 - [ ] Use secrets management (AWS Secrets Manager, Doppler, etc.)
-- [ ] Never commit `.env` files
+- [x] Never commit `.env` files
 - [ ] Rotate API keys periodically
 
 ## ⚡ Performance Optimization
@@ -113,7 +113,7 @@ sentry_sdk.init(
 ```
 
 ### 2. Metrics to Track
-- [ ] Translation latency (STT + Translate + TTS)
+- [x] Translation latency (STT + Translate + TTS)
 - [ ] WebSocket connection count
 - [ ] Active calls
 - [ ] API error rates
@@ -200,19 +200,19 @@ For mobile apps later:
 ## ✅ Pre-Launch Checklist
 
 - [ ] All API keys configured
-- [ ] Database migrations run
-- [ ] SSL/HTTPS enabled
-- [ ] CORS configured for production domains
-- [ ] Rate limiting enabled
-- [ ] Error tracking (Sentry) configured
-- [ ] Logging configured
-- [ ] Health check endpoint working
-- [ ] WebSocket reconnection logic tested
+- [x] Database migrations run
+- [x] SSL/HTTPS enabled
+- [x] CORS configured for production domains
+- [x] Rate limiting enabled
+- [ ] Error tracking (Sentry) configured — code ready, need DSN
+- [x] Logging configured (structlog)
+- [x] Health check endpoint working
+- [x] WebSocket reconnection logic tested
 - [ ] Voice cloning tested end-to-end
 - [ ] Translation latency < 500ms verified
 - [ ] Load tested with concurrent users
-- [ ] Terms of Service / Privacy Policy
-- [ ] User consent for voice recording
+- [x] Terms of Service / Privacy Policy
+- [x] User consent for voice recording
 
 ## 🔧 Quick Start for Production
 

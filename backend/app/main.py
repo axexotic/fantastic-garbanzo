@@ -1,19 +1,38 @@
 """FastAPI application factory."""
 
 import logging
+import sys
 from contextlib import asynccontextmanager
 
 import sentry_sdk
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.config import get_settings
-from app.routers import admin, ai, analytics, auth, call_features, calls, chats, friends, health, integrations, notifications, payments, recording, rooms, security, video_features, voice, websocket, whiteboard
+from app.routers import admin, ai, analytics, auth, call_features, calls, chats, friends, health, integrations, notifications, payments, preferences, recording, rooms, security, video_features, voice, websocket, whiteboard
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.csrf import CSRFMiddleware
 
-logger = logging.getLogger(__name__)
+# ── Configure structlog ──
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer() if not get_settings().debug else structlog.dev.ConsoleRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
 
 
 @asynccontextmanager
@@ -34,11 +53,15 @@ async def lifespan(app: FastAPI):
 
     # -- Startup --
     from app.services.redis_service import redis_service
+    from app.services.pubsub_service import pubsub_service
 
     await redis_service.connect(settings.redis_url)
+    await pubsub_service.connect(settings.redis_url)
+    await pubsub_service.start_listener()
     print(f"🚀 {settings.app_name} backend started")
     yield
     # -- Shutdown --
+    await pubsub_service.disconnect()
     await redis_service.disconnect()
     print("🛑 Backend shut down")
 
@@ -73,6 +96,9 @@ def create_app() -> FastAPI:
     # Rate limiting
     app.add_middleware(RateLimitMiddleware)
 
+    # CSRF protection
+    app.add_middleware(CSRFMiddleware)
+
     # Routers
     app.include_router(health.router)
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
@@ -91,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
     app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
     app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+    app.include_router(preferences.router, prefix="/api/preferences", tags=["preferences"])
     app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(websocket.router)
 
