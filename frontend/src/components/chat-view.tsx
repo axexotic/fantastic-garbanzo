@@ -14,7 +14,7 @@ import {
 import { chats as chatsApi, calls as callsApi } from "@/lib/api";
 import type { ChatMessage, ChatPreview, UserProfile } from "@/lib/api";
 import { useChatStore, useCallStore } from "@/lib/store";
-import { ChatLanguageSelector } from "./chat-language-selector";
+// Per-chat language selector removed — translation always uses user's preferred_language from signup
 import { ActiveCallBanner } from "./active-call-banner";
 import { GroupSettings } from "./group-settings";
 import { useRouter } from "next/navigation";
@@ -89,7 +89,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [showLangSelector, setShowLangSelector] = useState(false);
+
   const [startingCall, setStartingCall] = useState<"voice" | "video" | null>(null);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
 
@@ -98,7 +98,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSent = useRef(0);
 
-  const myLanguage = chat?.my_language || currentUser.preferred_language || "en";
+  const myLanguage = currentUser.preferred_language || "en";
 
   // Load messages
   useEffect(() => {
@@ -303,14 +303,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowLangSelector(!showLangSelector)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title={`Receiving in: ${LANG_NAMES[myLanguage] || myLanguage}`}
-          >
-            <Globe className="h-5 w-5" />
-            <span className="sr-only">Language</span>
-          </button>
+
           <button 
             onClick={() => handleStartCall("voice")}
             disabled={!!startingCall}
@@ -346,15 +339,6 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           )}
         </div>
       </div>
-
-      {/* Language Selector Dropdown */}
-      {showLangSelector && (
-        <ChatLanguageSelector
-          chatId={chatId}
-          currentLanguage={myLanguage}
-          onClose={() => setShowLangSelector(false)}
-        />
-      )}
 
       {/* Active Call Banner */}
       {activeCall && (

@@ -111,7 +111,7 @@ async def start_call(
     participant = CallParticipant(
         call_id=call.id,
         user_id=current_user.id,
-        language=membership.language or current_user.preferred_language,
+        language=current_user.preferred_language or "en",
         status="joined",
         joined_at=datetime.utcnow(),
     )
@@ -185,7 +185,7 @@ async def join_call(
         participant = CallParticipant(
             call_id=call.id,
             user_id=current_user.id,
-            language=membership.language or current_user.preferred_language,
+            language=current_user.preferred_language or "en",
             status="joined",
             joined_at=datetime.utcnow(),
         )

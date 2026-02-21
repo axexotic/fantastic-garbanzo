@@ -431,10 +431,10 @@ async def _handle_chat_message(user_id: str, msg: dict, websocket: WebSocket):
             await websocket.send_json({"type": "error", "data": "Not a member"})
             return
 
-        source_lang = sender_membership.language
+        source_lang = sender_membership.user.preferred_language or "en"
 
         # Translate to all needed languages
-        target_langs = {m.language for m in chat.members if m.language != source_lang}
+        target_langs = {m.user.preferred_language or "en" for m in chat.members if (m.user.preferred_language or "en") != source_lang}
         translations = {source_lang: content}
 
         for tl in target_langs:
@@ -466,7 +466,7 @@ async def _handle_chat_message(user_id: str, msg: dict, websocket: WebSocket):
 
         # Send personalized message to each member
         for member in chat.members:
-            member_lang = member.language
+            member_lang = member.user.preferred_language or "en"
             msg_data = {
                 "id": str(message.id),
                 "chat_id": str(chat.id),

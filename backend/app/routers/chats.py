@@ -270,12 +270,12 @@ async def list_chats(
             "avatar_url": chat.avatar_url if chat.chat_type == "group" else (
                 other_members[0].user.avatar_url if other_members else ""
             ),
-            "my_language": membership.language,
+            "my_language": current_user.preferred_language or "en",
             "members": [
-                {**user_brief(m.user), "language": m.language, "role": m.role}
+                {**user_brief(m.user), "language": m.user.preferred_language or "en", "role": m.role}
                 for m in chat.members
             ],
-            "last_message": format_message(last_msg, membership.language) if last_msg else None,
+            "last_message": format_message(last_msg, current_user.preferred_language or "en") if last_msg else None,
             "unread_count": unread,
             "updated_at": chat.updated_at.isoformat(),
         }
@@ -320,7 +320,7 @@ async def get_messages(
     membership.last_read_at = datetime.utcnow()
     await db.commit()
 
-    return [format_message(m, membership.language) for m in reversed(messages)]
+    return [format_message(m, current_user.preferred_language or "en") for m in reversed(messages)]
 
 
 # ─── Send Message ───────────────────────────────────────────
@@ -345,13 +345,14 @@ async def send_message(
         )
 
     chat, membership = await get_chat_with_access(chat_id, current_user.id, db)
-    source_lang = membership.language
+    source_lang = current_user.preferred_language or "en"
 
-    # Collect unique target languages (excluding sender's language)
+    # Collect unique target languages from each member's preferred_language
     target_languages = set()
     for m in chat.members:
-        if m.language != source_lang:
-            target_languages.add(m.language)
+        lang = m.user.preferred_language or "en"
+        if lang != source_lang:
+            target_languages.add(lang)
 
     # Translate to all needed languages
     translations = {source_lang: body.content}
@@ -388,7 +389,7 @@ async def send_message(
 
     # Broadcast to all chat members via WebSocket (personalized translation)
     for member in chat.members:
-        member_lang = member.language
+        member_lang = member.user.preferred_language or "en"
         msg_data = {
             "id": str(message.id),
             "chat_id": str(chat.id),
@@ -408,7 +409,7 @@ async def send_message(
             {"type": "new_message", "data": msg_data},
         )
 
-    return format_message(message, source_lang)
+    return format_message(message, current_user.preferred_language or "en")
 
 
 # ─── Group Management ──────────────────────────────────────
@@ -554,9 +555,11 @@ async def set_chat_language(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Set your preferred language for this specific chat."""
-    _, membership = await get_chat_with_access(chat_id, current_user.id, db)
-    membership.language = body.language
+    """Update user's global preferred language (applies to all chats)."""
+    # Verify user has access to this chat (backward compat)
+    await get_chat_with_access(chat_id, current_user.id, db)
+    # Update user's global preferred_language instead of per-chat
+    current_user.preferred_language = body.language
     await db.commit()
     return {"status": "updated", "language": body.language}
 
@@ -576,15 +579,13 @@ async def search_messages(
     """
     # Get all chat IDs the user belongs to
     member_result = await db.execute(
-        select(ChatMember.chat_id, ChatMember.language)
+        select(ChatMember.chat_id)
         .where(ChatMember.user_id == current_user.id)
     )
-    memberships = {str(row[0]): row[1] for row in member_result.all()}
+    chat_ids = [str(row[0]) for row in member_result.all()]
 
-    if not memberships:
+    if not chat_ids:
         return {"results": [], "total": 0}
-
-    chat_ids = list(memberships.keys())
 
     # Search in original content and JSONB translations
     from sqlalchemy import cast, String
@@ -603,7 +604,7 @@ async def search_messages(
 
     formatted = []
     for msg in messages:
-        viewer_lang = memberships.get(str(msg.chat_id), "en")
+        viewer_lang = current_user.preferred_language or "en"
         formatted.append({
             **format_message(msg, viewer_lang),
             "sender_username": msg.sender.username if msg.sender else "",
@@ -787,7 +788,7 @@ async def export_transcript(
     )
     messages = result.scalars().all()
 
-    viewer_lang = membership.language
+    viewer_lang = current_user.preferred_language or "en"
 
     if format == "json":
         data = [
