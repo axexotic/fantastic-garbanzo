@@ -3,7 +3,7 @@
  *
  * Uses refs for state-dependent values so the connect callback
  * stays stable, preventing reconnect loops.
- * Auth: cookies are sent during the WS upgrade handshake.
+ * Auth: token passed in URL path (/ws/{token}) — more reliable than cookies for WS.
  */
 
 "use client";
@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/store";
 import { useChatStore, useFriendsStore, useCallStore } from "@/lib/store";
+import { auth } from "@/lib/api";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
@@ -21,6 +22,8 @@ export function useSocket() {
   const handlersRef = useRef<Map<string, Set<MessageHandler>>>(new Map());
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const setToken = useAuthStore((s) => s.setToken);
   const incrementUnread = useChatStore((s) => s.incrementUnread);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const updateFriendStatus = useFriendsStore((s) => s.updateFriendStatus);
@@ -29,6 +32,8 @@ export function useSocket() {
   const updateParticipantCount = useCallStore((s) => s.updateParticipantCount);
 
   // Keep latest values in refs so connect() callback stays stable
+  const accessTokenRef = useRef(accessToken);
+  const setTokenRef = useRef(setToken);
   const activeChatIdRef = useRef(activeChatId);
   const incrementUnreadRef = useRef(incrementUnread);
   const updateFriendStatusRef = useRef(updateFriendStatus);
@@ -36,6 +41,8 @@ export function useSocket() {
   const setActiveCallRef = useRef(setActiveCall);
   const updateParticipantCountRef = useRef(updateParticipantCount);
 
+  useEffect(() => { accessTokenRef.current = accessToken; }, [accessToken]);
+  useEffect(() => { setTokenRef.current = setToken; }, [setToken]);
   useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
   useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
   useEffect(() => { updateFriendStatusRef.current = updateFriendStatus; }, [updateFriendStatus]);
@@ -47,8 +54,10 @@ export function useSocket() {
     if (!user) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Connect to cookie-based WS endpoint — cookies sent in upgrade handshake
-    const ws = new WebSocket(`${WS_URL}/ws`);
+    // Use token-in-URL for reliable auth; fall back to cookie-based
+    const token = accessTokenRef.current;
+    const wsUrl = token ? `${WS_URL}/ws/${token}` : `${WS_URL}/ws`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log("🔌 WebSocket connected");
@@ -118,21 +127,20 @@ export function useSocket() {
       }
     };
 
-    ws.onclose = (event) => {
+    ws.onclose = () => {
       wsRef.current = null;
-      if (event.code === 4001) {
-        // Token expired — refresh before reconnecting
-        console.log("🔑 WS auth failed, refreshing token...");
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        }).finally(() => {
-          reconnectRef.current = setTimeout(connect, 1000);
+      // Refresh token before reconnecting to ensure we always have a valid token
+      console.log("🔌 WebSocket disconnected, refreshing token...");
+      auth.refresh()
+        .then((res) => {
+          setTokenRef.current(res.token);
+        })
+        .catch(() => {
+          // Refresh failed — might be logged out; connect anyway (will fail gracefully)
+        })
+        .finally(() => {
+          reconnectRef.current = setTimeout(connect, 3000);
         });
-      } else {
-        console.log("🔌 WebSocket disconnected, reconnecting in 3s...");
-        reconnectRef.current = setTimeout(connect, 3000);
-      }
     };
 
     ws.onerror = (err) => {
@@ -154,11 +162,23 @@ export function useSocket() {
     }
   }, []);
 
-  // Auto-connect on mount, reconnect on token change
+  // Auto-connect on mount, reconnect on user change
   useEffect(() => {
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
+
+  // If token arrives (e.g. after loadFromServer) and WS is not open, reconnect immediately
+  useEffect(() => {
+    if (accessToken && user && wsRef.current?.readyState !== WebSocket.OPEN) {
+      if (reconnectRef.current) {
+        clearTimeout(reconnectRef.current);
+        reconnectRef.current = null;
+      }
+      connect();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   // ─── Messaging ─────────────────────────
 

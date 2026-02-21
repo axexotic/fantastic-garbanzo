@@ -46,7 +46,7 @@ export default function LoginPage() {
 
     try {
       const res = await auth.login({ login, password });
-      setAuth(res.user);
+      setAuth(res.user, res.token);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed. Is the backend running?");

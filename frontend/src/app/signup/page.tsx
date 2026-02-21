@@ -57,7 +57,7 @@ export default function SignupPage() {
 
     try {
       const res = await auth.signup(form);
-      setAuth(res.user);
+      setAuth(res.user, res.token);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Signup failed");

@@ -10,8 +10,10 @@ import type { UserProfile, ChatPreview, FriendBrief, IncomingRequest } from "./a
 
 interface AuthState {
   user: UserProfile | null;
+  accessToken: string | null;
   isLoading: boolean;
-  setAuth: (user: UserProfile) => void;
+  setAuth: (user: UserProfile, token?: string) => void;
+  setToken: (token: string) => void;
   updateUser: (data: Partial<UserProfile>) => void;
   logout: () => void;
   loadFromServer: () => Promise<void>;
@@ -19,10 +21,15 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  accessToken: null,
   isLoading: true,
 
-  setAuth: (user) => {
-    set({ user, isLoading: false });
+  setAuth: (user, token) => {
+    set({ user, isLoading: false, ...(token ? { accessToken: token } : {}) });
+  },
+
+  setToken: (token) => {
+    set({ accessToken: token });
   },
 
   updateUser: (data) =>
@@ -31,7 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     })),
 
   logout: () => {
-    set({ user: null, isLoading: false });
+    set({ user: null, isLoading: false, accessToken: null });
   },
 
   loadFromServer: async () => {
@@ -39,10 +46,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Dynamic import to avoid circular dependency
       const { auth } = await import("./api");
       const user = await auth.me();
-      set({ user, isLoading: false });
+      // Also get a fresh access token for WebSocket use
+      let token: string | undefined;
+      try {
+        const refreshed = await auth.refresh();
+        token = refreshed.token;
+      } catch {
+        // Refresh might fail if not logged in — ignore
+      }
+      set({ user, isLoading: false, ...(token ? { accessToken: token } : {}) });
     } catch {
       // Not authenticated or server error
-      set({ user: null, isLoading: false });
+      set({ user: null, isLoading: false, accessToken: null });
     }
   },
 }));
