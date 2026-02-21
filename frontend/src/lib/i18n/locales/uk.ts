@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const uk: Translations = {
+const uk = {
   "common.loading": "Завантаження...",
   "common.save": "Зберегти",
   "common.cancel": "Скасувати",

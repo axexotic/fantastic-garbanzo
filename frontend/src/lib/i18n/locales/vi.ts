@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const vi: Translations = {
+const vi = {
   "common.loading": "Đang tải...",
   "common.save": "Lưu",
   "common.cancel": "Hủy",

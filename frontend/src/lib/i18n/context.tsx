@@ -75,7 +75,7 @@ interface I18nProviderProps {
 }
 
 // In-memory cache so we don't re-fetch the same locale
-const translationsCache: Record<string, Translations> = {};
+const translationsCache: Record<string, Partial<Translations>> = {};
 
 export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
   const [locale, setLocaleState] = useState<string>(() => {
@@ -90,18 +90,18 @@ export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
     return DEFAULT_LOCALE;
   });
 
-  const [translations, setTranslations] = useState<Translations | null>(null);
+  const [translations, setTranslations] = useState<Partial<Translations> | null>(null);
   const [fallback, setFallback] = useState<Translations | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Load English fallback once
   useEffect(() => {
     if (translationsCache["en"]) {
-      setFallback(translationsCache["en"]);
+      setFallback(translationsCache["en"] as Translations);
     } else {
       LOCALE_LOADERS["en"]().then((mod) => {
         translationsCache["en"] = mod.default;
-        setFallback(mod.default);
+        setFallback(mod.default as Translations);
       });
     }
   }, []);

@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const ja: Translations = {
+const ja = {
   "common.loading": "読み込み中...",
   "common.save": "保存",
   "common.cancel": "キャンセル",

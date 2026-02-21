@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const zh: Translations = {
+const zh = {
   "common.loading": "加载中...",
   "common.save": "保存",
   "common.cancel": "取消",

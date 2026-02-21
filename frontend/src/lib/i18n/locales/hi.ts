@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const hi: Translations = {
+const hi = {
   "common.loading": "लोड हो रहा है...",
   "common.save": "सेव करें",
   "common.cancel": "रद्द करें",

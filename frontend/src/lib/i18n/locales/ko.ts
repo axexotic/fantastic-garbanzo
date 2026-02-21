@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const ko: Translations = {
+const ko = {
   "common.loading": "로딩 중...",
   "common.save": "저장",
   "common.cancel": "취소",

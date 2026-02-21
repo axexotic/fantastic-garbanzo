@@ -1,6 +1,4 @@
-import type { Translations } from "../types";
-
-const id: Translations = {
+const id = {
   "common.loading": "Memuat...",
   "common.save": "Simpan",
   "common.cancel": "Batal",
