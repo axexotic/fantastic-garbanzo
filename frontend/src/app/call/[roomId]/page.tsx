@@ -5,10 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2, PhoneOff } from "lucide-react";
 import { CallInterface } from "@/components/call-interface";
 import { calls as callsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 export default function CallPage({ params }: { params: { roomId: string } }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const callId = searchParams.get("callId") || "";
   const callType = (searchParams.get("type") as "voice" | "video") || "voice";
@@ -47,7 +49,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
             onClick={() => router.push("/dashboard")}
             className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground"
           >
-            Back to Dashboard
+            {t("call.backToDashboard")}
           </button>
         </div>
       </div>
@@ -59,7 +61,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Joining call...</p>
+          <p className="text-muted-foreground">{t("call.joining")}</p>
         </div>
       </div>
     );

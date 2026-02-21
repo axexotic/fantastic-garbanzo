@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, Globe, Users, User } from "lucide-react";
 import type { ChatPreview } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface ChatListProps {
   chats: ChatPreview[];
@@ -25,8 +26,8 @@ function formatTime(dateStr: string) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function getChatDisplayName(chat: ChatPreview, currentUserId: string): string {
-  if (chat.chat_type === "group") return chat.name || "Group Chat";
+function getChatDisplayName(chat: ChatPreview, currentUserId: string, groupLabel: string): string {
+  if (chat.chat_type === "group") return chat.name || groupLabel;
   const other = chat.members?.find((m) => m.id !== currentUserId);
   return other?.display_name || chat.name || "Chat";
 }
@@ -51,10 +52,11 @@ const LANG_FLAGS: Record<string, string> = {
 
 export function ChatList({ chats, activeChatId, onSelectChat, currentUserId }: ChatListProps) {
   const [search, setSearch] = useState("");
+  const { t } = useTranslation();
 
   const filtered = chats.filter((c) => {
     if (!search) return true;
-    const name = getChatDisplayName(c, currentUserId).toLowerCase();
+    const name = getChatDisplayName(c, currentUserId, t("chatList.groupChat")).toLowerCase();
     return name.includes(search.toLowerCase());
   });
 
@@ -66,7 +68,7 @@ export function ChatList({ chats, activeChatId, onSelectChat, currentUserId }: C
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search chats..."
+            placeholder={t("chatList.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg bg-secondary/50 py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:bg-secondary"
@@ -77,11 +79,11 @@ export function ChatList({ chats, activeChatId, onSelectChat, currentUserId }: C
       {/* Chat Items */}
       {filtered.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-          {search ? "No chats found" : "No chats yet — start one!"}
+          {search ? t("chatList.noChats") : t("chatList.noChatsYet")}
         </div>
       ) : (
         filtered.map((chat) => {
-          const name = getChatDisplayName(chat, currentUserId);
+          const name = getChatDisplayName(chat, currentUserId, t("chatList.groupChat"));
           const otherLang = getOtherLanguage(chat, currentUserId);
           const lastMsg = chat.last_message;
           const isActive = chat.id === activeChatId;

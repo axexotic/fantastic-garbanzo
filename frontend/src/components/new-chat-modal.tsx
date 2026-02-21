@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, MessageCircle, Users, X } from "lucide-react";
 import { useFriendsStore } from "@/lib/store";
 import { chats as chatsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -19,6 +20,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useTranslation();
 
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
@@ -33,7 +35,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
     try {
       if (mode === "dm") {
         if (selected.size !== 1) {
-          setError("Select one friend for a DM");
+          setError(t("newChat.selectOneFriend"));
           setLoading(false);
           return;
         }
@@ -42,12 +44,12 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
         onCreated(chat_id);
       } else {
         if (selected.size < 1) {
-          setError("Select at least one member");
+          setError(t("newChat.selectAtLeastOne"));
           setLoading(false);
           return;
         }
         if (!groupName.trim()) {
-          setError("Enter a group name");
+          setError(t("newChat.enterGroupName"));
           setLoading(false);
           return;
         }
@@ -58,7 +60,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
         onCreated(chat_id);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to create chat");
+      setError(err.message || t("newChat.failedCreate"));
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
       <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="text-lg font-semibold">New Chat</h2>
+          <h2 className="text-lg font-semibold">{t("newChat.title")}</h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground"
@@ -91,7 +93,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            <MessageCircle className="h-4 w-4" /> Direct Message
+            <MessageCircle className="h-4 w-4" /> {t("newChat.directMessage")}
           </button>
           <button
             onClick={() => {
@@ -104,7 +106,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Users className="h-4 w-4" /> Group Chat
+            <Users className="h-4 w-4" /> {t("newChat.groupChat")}
           </button>
         </div>
 
@@ -113,7 +115,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
           <div className="px-5 pt-3">
             <input
               type="text"
-              placeholder="Group name..."
+              placeholder={t("newChat.groupName")}
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
@@ -125,12 +127,12 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
         <div className="max-h-64 overflow-y-auto px-5 py-3">
           <p className="mb-2 text-xs text-muted-foreground">
             {mode === "dm"
-              ? "Select a friend to message"
-              : "Select members for the group"}
+              ? t("newChat.selectFriend")
+              : t("newChat.selectMembers")}
           </p>
           {friends.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              Add friends first to start chatting
+              {t("newChat.addFriendsFirst")}
             </p>
           ) : (
             friends.map((friend) => {
@@ -197,7 +199,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
               onClick={onClose}
               className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium transition-colors hover:bg-secondary"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleCreate}
@@ -207,7 +209,7 @@ export function NewChatModal({ onClose, onCreated }: NewChatModalProps) {
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Create"
+                t("common.create")
               )}
             </button>
           </div>

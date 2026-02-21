@@ -46,6 +46,7 @@ import {
   type UserPreferences,
 } from "@/lib/api";
 import { VoiceRecorder } from "./voice-recorder";
+import { useTranslation, LANGUAGES as I18N_LANGUAGES, SUPPORTED_LOCALES } from "@/lib/i18n";
 
 // ─── Types ─────────────────────────────────────────────────
 
@@ -280,6 +281,7 @@ function SettingRow({
 export function SettingsPanel() {
   const { user, updateUser } = useAuthStore();
   const [section, setSection] = useState<SettingsSection>("menu");
+  const { t, locale, setLocale, languages: allLanguages } = useTranslation();
 
   // Profile state
   const [displayName, setDisplayName] = useState(user?.display_name || "");
@@ -610,57 +612,57 @@ export function SettingsPanel() {
         <div className="p-2 space-y-0.5">
           <MenuItem
             icon={User}
-            label="My Account"
-            sublabel="Profile, language, voice"
+            label={t("settings.myAccount")}
+            sublabel={t("settings.profileLanguageVoice")}
             onClick={() => setSection("account")}
             iconColor="bg-blue-500/10 text-blue-500"
           />
           <MenuItem
             icon={Bell}
-            label="Notifications & Sounds"
-            sublabel="Ringtones, tones, DND"
+            label={t("settings.notificationsAndSounds")}
+            sublabel={t("settings.ringtonesTonesDND")}
             onClick={() => setSection("notifications")}
             iconColor="bg-red-500/10 text-red-500"
           />
           <MenuItem
             icon={Shield}
-            label="Privacy & Security"
-            sublabel="Last seen, read receipts"
+            label={t("settings.privacyAndSecurity")}
+            sublabel={t("settings.lastSeenReadReceipts")}
             onClick={() => setSection("privacy")}
             iconColor="bg-green-500/10 text-green-500"
           />
           <MenuItem
             icon={MessageCircle}
-            label="Chat Settings"
-            sublabel="Appearance, translation"
+            label={t("settings.chatSettings")}
+            sublabel={t("settings.appearanceTranslation")}
             onClick={() => setSection("chat")}
             iconColor="bg-cyan-500/10 text-cyan-500"
           />
           <MenuItem
             icon={Folder}
-            label="Folders"
-            sublabel="Organize your chats"
+            label={t("settings.folders")}
+            sublabel={t("settings.organizeChats")}
             onClick={() => setSection("folders")}
             iconColor="bg-purple-500/10 text-purple-500"
           />
           <MenuItem
             icon={Settings2}
-            label="Advanced"
-            sublabel="Data, storage, proxy"
+            label={t("settings.advanced")}
+            sublabel={t("settings.dataStorageProxy")}
             onClick={() => setSection("advanced")}
             iconColor="bg-gray-500/10 text-gray-500"
           />
           <MenuItem
             icon={Speaker}
-            label="Speakers & Camera"
-            sublabel="Audio/video devices"
+            label={t("settings.speakersAndCamera")}
+            sublabel={t("settings.audioVideoDevices")}
             onClick={() => setSection("devices")}
             iconColor="bg-orange-500/10 text-orange-500"
           />
           <MenuItem
             icon={Zap}
-            label="Battery & Animations"
-            sublabel="Performance options"
+            label={t("settings.batteryAndAnimations")}
+            sublabel={t("settings.performanceOptions")}
             onClick={() => setSection("battery")}
             iconColor="bg-yellow-500/10 text-yellow-500"
           />
@@ -669,15 +671,59 @@ export function SettingsPanel() {
 
           <MenuItem
             icon={CreditCard}
-            label="Payments & Credits"
+            label={t("settings.paymentsAndCredits")}
             sublabel={
               balanceInfo
                 ? `${balanceInfo.balance_display} credits`
-                : "Manage billing"
+                : t("settings.manageBilling")
             }
             onClick={() => setSection("payments")}
             iconColor="bg-emerald-500/10 text-emerald-500"
           />
+
+          {/* ─── App Language ─── */}
+          <div className="mt-4 border-t border-border pt-4 px-3">
+            <div className="mb-2">
+              <div className="text-sm font-medium">{t("settings.appLanguage")}</div>
+              <div className="text-xs text-muted-foreground">{t("settings.appLanguageDesc")}</div>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
+              {allLanguages.filter(l => SUPPORTED_LOCALES.includes(l.code)).map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => setLocale(lang.code)}
+                  className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                    locale === lang.code
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-secondary/50"
+                  }`}
+                >
+                  <span>{lang.flag}</span>
+                  <span className="truncate">{lang.name}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 border-t border-border pt-2">
+              <div className="text-xs text-muted-foreground mb-1.5">{t("settings.appLanguageDesc")}</div>
+              <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto">
+                {allLanguages.filter(l => !SUPPORTED_LOCALES.includes(l.code)).map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setLocale(lang.code)}
+                    className={`flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] transition-colors ${
+                      locale === lang.code
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-secondary/50 text-muted-foreground"
+                    }`}
+                    title={`${lang.name} (${lang.nameEn})`}
+                  >
+                    <span>{lang.flag}</span>
+                    <span className="truncate">{lang.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -690,7 +736,7 @@ export function SettingsPanel() {
   if (section === "account") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="My Account" onBack={goBack} />
+        <SectionHeader title={t("settings.myAccount")} onBack={goBack} />
 
         {/* Avatar + Name */}
         <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
@@ -746,7 +792,7 @@ export function SettingsPanel() {
         <div className="px-4 py-3 space-y-3">
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Display Name
+              {t("account.displayName")}
             </label>
             <input
               type="text"
@@ -757,19 +803,19 @@ export function SettingsPanel() {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Bio
+              {t("account.bio")}
             </label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
               className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="Tell people about yourself..."
+              placeholder={t("account.bioPlaceholder")}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">
-              Username
+              {t("account.usernameLabel")}
             </label>
             <input
               type="text"
@@ -783,10 +829,10 @@ export function SettingsPanel() {
         {/* Language */}
         <div className="px-4 py-3 border-t border-border">
           <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            <Globe className="h-3.5 w-3.5" /> My Language
+            <Globe className="h-3.5 w-3.5" /> {t("account.myLanguage")}
           </h4>
           <p className="mb-2 text-xs text-muted-foreground">
-            Messages will be translated to this language.
+            {t("account.myLanguageDesc")}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {LANGUAGES.map((lang) => (
@@ -809,10 +855,10 @@ export function SettingsPanel() {
         {/* Voice Profile */}
         <div className="px-4 py-3 border-t border-border">
           <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            <Mic className="h-3.5 w-3.5" /> Voice Profile
+            <Mic className="h-3.5 w-3.5" /> {t("account.voiceProfile")}
           </h4>
           <p className="mb-2 text-xs text-muted-foreground">
-            Your cloned voice is used for live call translation.
+            {t("account.voiceProfileDesc")}
           </p>
 
           {loadingVoice ? (
@@ -830,7 +876,7 @@ export function SettingsPanel() {
               {uploadingVoice && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Creating voice profile...
+                  {t("account.creatingVoice")}
                 </div>
               )}
               <button
@@ -845,14 +891,14 @@ export function SettingsPanel() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span className="text-xs font-medium">Voice profile active</span>
+                <span className="text-xs font-medium">{t("account.voiceActive")}</span>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowVoiceRecorder(true)}
                   className="flex-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary"
                 >
-                  Re-record
+                  {t("account.reRecord")}
                 </button>
                 <button
                   onClick={handleDeleteVoice}
@@ -871,13 +917,13 @@ export function SettingsPanel() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
                 <AlertCircle className="h-4 w-4 text-amber-500" />
-                <span className="text-xs">No voice profile set up</span>
+                <span className="text-xs">{t("account.noVoice")}</span>
               </div>
               <button
                 onClick={() => setShowVoiceRecorder(true)}
                 className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Set Up Voice Profile
+                {t("account.setupVoice")}
               </button>
             </div>
           )}
@@ -894,10 +940,10 @@ export function SettingsPanel() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : saved ? (
               <>
-                <Check className="h-4 w-4" /> Saved
+                <Check className="h-4 w-4" /> {t("account.saved")}
               </>
             ) : (
-              "Save Changes"
+              t("account.saveChanges")
             )}
           </button>
         </div>
@@ -905,7 +951,7 @@ export function SettingsPanel() {
         {/* Account Actions */}
         <div className="px-4 py-3 border-t border-border space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Account Actions
+            {t("account.accountActions")}
           </h4>
 
           {/* Change Password */}
@@ -913,20 +959,20 @@ export function SettingsPanel() {
             onClick={() => setShowPasswordChange(!showPasswordChange)}
             className="flex w-full items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-sm hover:bg-secondary"
           >
-            <Lock className="h-4 w-4" /> Change Password
+            <Lock className="h-4 w-4" /> {t("account.changePassword")}
           </button>
           {showPasswordChange && (
             <div className="space-y-2 rounded-lg border border-border p-3">
               <input
                 type="password"
-                placeholder="Current password"
+                placeholder={t("account.currentPassword")}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
               <input
                 type="password"
-                placeholder="New password (min 8 chars)"
+                placeholder={t("account.newPasswordPlaceholder")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
@@ -939,7 +985,7 @@ export function SettingsPanel() {
                 {changingPassword ? (
                   <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 ) : (
-                  "Update Password"
+                  t("account.updatePassword")
                 )}
               </button>
             </div>
@@ -950,17 +996,16 @@ export function SettingsPanel() {
             onClick={() => setShowDeleteAccount(!showDeleteAccount)}
             className="flex w-full items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20"
           >
-            <Trash2 className="h-4 w-4" /> Delete Account
+            <Trash2 className="h-4 w-4" /> {t("account.deleteAccount")}
           </button>
           {showDeleteAccount && (
             <div className="space-y-2 rounded-lg border border-destructive/30 p-3">
               <p className="text-xs text-muted-foreground">
-                This will permanently deactivate your account. Enter your
-                password to confirm.
+                {t("account.deleteAccountDesc")}
               </p>
               <input
                 type="password"
-                placeholder="Your password"
+                placeholder={t("account.yourPassword")}
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-destructive"
@@ -973,7 +1018,7 @@ export function SettingsPanel() {
                 {deletingAccount ? (
                   <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 ) : (
-                  "Confirm Delete"
+                  t("account.confirmDelete")
                 )}
               </button>
             </div>
@@ -990,7 +1035,7 @@ export function SettingsPanel() {
   if (section === "notifications") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Notifications & Sounds" onBack={goBack} />
+        <SectionHeader title={t("settings.notificationsAndSounds")} onBack={goBack} />
 
         {loadingNotif ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1000,21 +1045,21 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Push Notifications
+                {t("notif.pushNotifications")}
               </p>
-              <SettingRow label="Message notifications">
+              <SettingRow label={t("notif.messageNotifications")}>
                 <Toggle
                   checked={notifPrefs.push_messages}
                   onChange={(v) => updateNotif("push_messages", v)}
                 />
               </SettingRow>
-              <SettingRow label="Call notifications">
+              <SettingRow label={t("notif.callNotifications")}>
                 <Toggle
                   checked={notifPrefs.push_calls}
                   onChange={(v) => updateNotif("push_calls", v)}
                 />
               </SettingRow>
-              <SettingRow label="Friend request alerts">
+              <SettingRow label={t("notif.friendRequestAlerts")}>
                 <Toggle
                   checked={notifPrefs.push_friend_requests}
                   onChange={(v) => updateNotif("push_friend_requests", v)}
@@ -1024,15 +1069,15 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Email Notifications
+                {t("notif.emailNotifications")}
               </p>
-              <SettingRow label="Email on missed calls">
+              <SettingRow label={t("notif.emailMissedCalls")}>
                 <Toggle
                   checked={notifPrefs.email_calls}
                   onChange={(v) => updateNotif("email_calls", v)}
                 />
               </SettingRow>
-              <SettingRow label="Email on friend requests">
+              <SettingRow label={t("notif.emailFriendRequests")}>
                 <Toggle
                   checked={notifPrefs.email_friend_requests}
                   onChange={(v) => updateNotif("email_friend_requests", v)}
@@ -1042,15 +1087,15 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Sounds
+                {t("notif.sounds")}
               </p>
-              <SettingRow label="Sound effects">
+              <SettingRow label={t("notif.soundEffects")}>
                 <Toggle
                   checked={notifPrefs.sound_enabled}
                   onChange={(v) => updateNotif("sound_enabled", v)}
                 />
               </SettingRow>
-              <SettingRow label="Vibration">
+              <SettingRow label={t("notif.vibration")}>
                 <Toggle
                   checked={notifPrefs.vibration_enabled}
                   onChange={(v) => updateNotif("vibration_enabled", v)}
@@ -1060,23 +1105,23 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Ringtone & Tones
+                {t("notif.ringtoneTones")}
               </p>
-              <SettingRow label="Ringtone" sublabel="Incoming voice/video calls">
+              <SettingRow label={t("notif.ringtone")} sublabel={t("notif.incomingCalls")}>
                 <ToneSelect
                   value={notifPrefs.ringtone}
                   options={RINGTONE_OPTIONS}
                   onChange={(v) => updateNotif("ringtone", v)}
                 />
               </SettingRow>
-              <SettingRow label="Notification" sublabel="Message alerts">
+              <SettingRow label={t("notif.notification")} sublabel={t("notif.messageAlerts")}>
                 <ToneSelect
                   value={notifPrefs.notification_tone}
                   options={NOTIFICATION_TONE_OPTIONS}
                   onChange={(v) => updateNotif("notification_tone", v)}
                 />
               </SettingRow>
-              <SettingRow label="Group tone" sublabel="Group chat alerts">
+              <SettingRow label={t("notif.groupTone")} sublabel={t("notif.groupAlerts")}>
                 <ToneSelect
                   value={notifPrefs.group_tone}
                   options={NOTIFICATION_TONE_OPTIONS}
@@ -1087,9 +1132,9 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Do Not Disturb
+                {t("notif.dnd")}
               </p>
-              <SettingRow label="Enable DND">
+              <SettingRow label={t("notif.enableDND")}>
                 <Toggle
                   checked={notifPrefs.dnd_enabled}
                   onChange={(v) => updateNotif("dnd_enabled", v)}
@@ -1098,7 +1143,7 @@ export function SettingsPanel() {
               {notifPrefs.dnd_enabled && (
                 <div className="flex gap-2 px-4 py-2">
                   <div className="flex-1">
-                    <label className="text-xs text-muted-foreground">From</label>
+                    <label className="text-xs text-muted-foreground">{t("notif.from")}</label>
                     <input
                       type="time"
                       title="DND start"
@@ -1108,7 +1153,7 @@ export function SettingsPanel() {
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-muted-foreground">To</label>
+                    <label className="text-xs text-muted-foreground">{t("notif.to")}</label>
                     <input
                       type="time"
                       title="DND end"
@@ -1123,7 +1168,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Could not load notification preferences.
+            {t("notif.couldNotLoad")}
           </p>
         )}
       </div>
@@ -1137,7 +1182,7 @@ export function SettingsPanel() {
   if (section === "privacy") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Privacy & Security" onBack={goBack} />
+        <SectionHeader title={t("settings.privacyAndSecurity")} onBack={goBack} />
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1147,9 +1192,9 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Privacy
+                {t("privacy.privacy")}
               </p>
-              <SettingRow label="Last Seen" sublabel="Who can see your last seen time">
+              <SettingRow label={t("privacy.lastSeen")} sublabel={t("privacy.lastSeenDesc")}>
                 <Select
                   value={prefs.show_last_seen}
                   options={[
@@ -1161,8 +1206,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label="Profile Photo"
-                sublabel="Who can see your profile photo"
+                label={t("privacy.profilePhoto")}
+                sublabel={t("privacy.profilePhotoDesc")}
               >
                 <Select
                   value={prefs.show_profile_photo}
@@ -1174,7 +1219,7 @@ export function SettingsPanel() {
                   onChange={(v) => updatePref("show_profile_photo", v)}
                 />
               </SettingRow>
-              <SettingRow label="Read Receipts" sublabel="Show when you've read messages">
+              <SettingRow label={t("privacy.readReceipts")} sublabel={t("privacy.readReceiptsDesc")}>
                 <Toggle
                   checked={prefs.show_read_receipts}
                   onChange={(v) => updatePref("show_read_receipts", v)}
@@ -1184,11 +1229,11 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Security
+                {t("privacy.security")}
               </p>
               <SettingRow
-                label="Two-Factor Auth"
-                sublabel="Require code on new device"
+                label={t("privacy.twoFactor")}
+                sublabel={t("privacy.twoFactorDesc")}
               >
                 <Toggle
                   checked={prefs.two_factor_enabled}
@@ -1196,8 +1241,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label="Active Sessions"
-                sublabel="Max simultaneous sessions"
+                label={t("privacy.activeSessions")}
+                sublabel={t("privacy.activeSessionsDesc")}
               >
                 <Select
                   value={String(prefs.active_sessions_limit)}
@@ -1216,7 +1261,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Could not load privacy settings.
+            {t("privacy.couldNotLoad")}
           </p>
         )}
       </div>
@@ -1230,7 +1275,7 @@ export function SettingsPanel() {
   if (section === "chat") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Chat Settings" onBack={goBack} />
+        <SectionHeader title={t("settings.chatSettings")} onBack={goBack} />
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1240,9 +1285,9 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Appearance
+                {t("chat.appearance")}
               </p>
-              <SettingRow label="Font Size">
+              <SettingRow label={t("chat.fontSize")}>
                 <Select
                   value={prefs.chat_font_size}
                   options={[
@@ -1253,7 +1298,7 @@ export function SettingsPanel() {
                   onChange={(v) => updatePref("chat_font_size", v)}
                 />
               </SettingRow>
-              <SettingRow label="Wallpaper">
+              <SettingRow label={t("chat.wallpaper")}>
                 <Select
                   value={prefs.chat_wallpaper}
                   options={[
@@ -1269,11 +1314,11 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Behavior
+                {t("chat.behavior")}
               </p>
               <SettingRow
-                label="Group messages"
-                sublabel="Cluster messages by time"
+                label={t("chat.groupMessages")}
+                sublabel={t("chat.groupMessagesDesc")}
               >
                 <Toggle
                   checked={prefs.message_grouping}
@@ -1281,8 +1326,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label="Send with Enter"
-                sublabel="Enter sends, Shift+Enter new line"
+                label={t("chat.sendWithEnter")}
+                sublabel={t("chat.sendWithEnterDesc")}
               >
                 <Toggle
                   checked={prefs.send_with_enter}
@@ -1290,8 +1335,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label="Auto-translate"
-                sublabel="Translate messages automatically"
+                label={t("chat.autoTranslate")}
+                sublabel={t("chat.autoTranslateDesc")}
               >
                 <Toggle
                   checked={prefs.auto_translate_messages}
@@ -1302,7 +1347,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Could not load chat settings.
+            {t("chat.couldNotLoad")}
           </p>
         )}
       </div>
@@ -1316,13 +1361,12 @@ export function SettingsPanel() {
   if (section === "folders") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Folders" onBack={goBack} />
+        <SectionHeader title={t("settings.folders")} onBack={goBack} />
         <div className="px-4 py-8 text-center">
           <Folder className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-          <h4 className="text-sm font-semibold">Chat Folders</h4>
+          <h4 className="text-sm font-semibold">{t("folders.chatFolders")}</h4>
           <p className="mt-1 text-xs text-muted-foreground">
-            Organize your conversations into custom folders. Create folders to
-            separate work, friends, and group chats.
+            {t("folders.chatFoldersDesc")}
           </p>
           <div className="mt-4 space-y-2">
             {["All Chats", "Personal", "Groups"].map((folder) => (
@@ -1336,7 +1380,7 @@ export function SettingsPanel() {
             ))}
           </div>
           <p className="mt-4 text-xs text-muted-foreground italic">
-            Custom folders coming soon
+            {t("folders.comingSoon")}
           </p>
         </div>
       </div>
@@ -1350,7 +1394,7 @@ export function SettingsPanel() {
   if (section === "advanced") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Advanced" onBack={goBack} />
+        <SectionHeader title={t("settings.advanced")} onBack={goBack} />
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1360,11 +1404,11 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Data & Storage
+                {t("advanced.dataStorage")}
               </p>
               <SettingRow
-                label="Auto-download media"
-                sublabel="Photos, audio, documents"
+                label={t("advanced.autoDownload")}
+                sublabel={t("advanced.autoDownloadDesc")}
               >
                 <Toggle
                   checked={prefs.auto_download_media}
@@ -1372,7 +1416,7 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               {prefs.auto_download_media && (
-                <SettingRow label="Max file size">
+                <SettingRow label={t("advanced.maxFileSize")}>
                   <Select
                     value={String(prefs.auto_download_max_size_mb)}
                     options={[
@@ -1389,8 +1433,8 @@ export function SettingsPanel() {
                 </SettingRow>
               )}
               <SettingRow
-                label="Data Saver"
-                sublabel="Reduce bandwidth usage in calls"
+                label={t("advanced.dataSaver")}
+                sublabel={t("advanced.dataSaverDesc")}
               >
                 <Toggle
                   checked={prefs.data_saver_mode}
@@ -1401,9 +1445,9 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Connection
+                {t("advanced.connection")}
               </p>
-              <SettingRow label="Use Proxy" sublabel="Route through proxy server">
+              <SettingRow label={t("advanced.useProxy")} sublabel={t("advanced.useProxyDesc")}>
                 <Toggle
                   checked={prefs.proxy_enabled}
                   onChange={(v) => updatePref("proxy_enabled", v)}
@@ -1413,7 +1457,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Could not load advanced settings.
+            {t("advanced.couldNotLoad")}
           </p>
         )}
       </div>
@@ -1427,13 +1471,13 @@ export function SettingsPanel() {
   if (section === "devices") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Speakers & Camera" onBack={goBack} />
+        <SectionHeader title={t("settings.speakersAndCamera")} onBack={goBack} />
 
         <div className="divide-y divide-border">
           {/* Microphone */}
           <div className="px-1 py-2">
             <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Microphone
+              {t("devices.microphone")}
             </p>
             {audioInputs.length > 0 ? (
               <div className="px-4 py-2">
@@ -1461,7 +1505,7 @@ export function SettingsPanel() {
           {/* Speakers */}
           <div className="px-1 py-2">
             <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Speakers
+              {t("devices.speakers")}
             </p>
             {audioOutputs.length > 0 ? (
               <div className="px-4 py-2">
@@ -1488,7 +1532,7 @@ export function SettingsPanel() {
           {/* Camera */}
           <div className="px-1 py-2">
             <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Camera
+              {t("devices.camera")}
             </p>
             {videoInputs.length > 0 ? (
               <div className="px-4 py-2">
@@ -1515,21 +1559,21 @@ export function SettingsPanel() {
           {/* Audio Processing */}
           <div className="px-1 py-2">
             <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Audio Processing
+              {t("devices.audioProcessing")}
             </p>
-            <SettingRow label="Echo Cancellation">
+            <SettingRow label={t("devices.echoCancellation")}>
               <Toggle
                 checked={prefs?.echo_cancellation ?? true}
                 onChange={(v) => updatePref("echo_cancellation", v)}
               />
             </SettingRow>
-            <SettingRow label="Noise Suppression">
+            <SettingRow label={t("devices.noiseSuppression")}>
               <Toggle
                 checked={prefs?.noise_suppression ?? true}
                 onChange={(v) => updatePref("noise_suppression", v)}
               />
             </SettingRow>
-            <SettingRow label="Auto Gain Control">
+            <SettingRow label={t("devices.autoGainControl")}>
               <Toggle
                 checked={prefs?.auto_gain_control ?? true}
                 onChange={(v) => updatePref("auto_gain_control", v)}
@@ -1548,7 +1592,7 @@ export function SettingsPanel() {
   if (section === "battery") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Battery & Animations" onBack={goBack} />
+        <SectionHeader title={t("settings.batteryAndAnimations")} onBack={goBack} />
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -1558,11 +1602,11 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Performance
+                {t("battery.performance")}
               </p>
               <SettingRow
-                label="Reduce Animations"
-                sublabel="Minimize UI transitions"
+                label={t("battery.reduceAnimations")}
+                sublabel={t("battery.reduceAnimationsDesc")}
               >
                 <Toggle
                   checked={prefs.reduce_animations}
@@ -1570,8 +1614,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label="Power Saving Mode"
-                sublabel="Reduce background activity"
+                label={t("battery.powerSaving")}
+                sublabel={t("battery.powerSavingDesc")}
               >
                 <Toggle
                   checked={prefs.power_saving_mode}
@@ -1582,11 +1626,11 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Media
+                {t("battery.media")}
               </p>
               <SettingRow
-                label="Auto-play GIFs"
-                sublabel="Play animated images automatically"
+                label={t("battery.autoPlayGifs")}
+                sublabel={t("battery.autoPlayGifsDesc")}
               >
                 <Toggle
                   checked={prefs.auto_play_gifs}
@@ -1597,7 +1641,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Could not load settings.
+            {t("battery.couldNotLoad")}
           </p>
         )}
       </div>
@@ -1611,13 +1655,13 @@ export function SettingsPanel() {
   if (section === "payments") {
     return (
       <div className="flex flex-col">
-        <SectionHeader title="Payments & Credits" onBack={goBack} />
+        <SectionHeader title={t("settings.paymentsAndCredits")} onBack={goBack} />
 
         <div className="p-4 space-y-4">
           {/* Chat Plan — $15 Lifetime */}
           <div className="rounded-xl border border-border bg-card p-4">
             <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <MessageCircle className="h-3.5 w-3.5" /> Chat Plan
+              <MessageCircle className="h-3.5 w-3.5" /> {t("payments.chatPlan")}
             </h4>
             {loadingPayments ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1628,17 +1672,17 @@ export function SettingsPanel() {
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 <div>
                   <div className="text-xs font-semibold text-emerald-500">
-                    Lifetime Chat Active
+                    {t("payments.lifetimeChatActive")}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Unlimited text messaging
+                    {t("payments.unlimitedMessaging")}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  One-time purchase for unlimited text messaging.
+                  {t("payments.oneTimePurchase")}
                 </p>
                 <button
                   disabled={buyingChatPlan}
@@ -1660,7 +1704,7 @@ export function SettingsPanel() {
                       <Loader2 className="h-4 w-4 animate-spin" /> Processing...
                     </span>
                   ) : (
-                    "Buy Lifetime Chat — $15"
+                    t("payments.buyLifetimeChat")
                   )}
                 </button>
               </div>
@@ -1670,7 +1714,7 @@ export function SettingsPanel() {
           {/* Voice/Video Credits */}
           <div className="rounded-xl border border-border bg-card p-4">
             <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Phone className="h-3.5 w-3.5" /> Voice & Video Credits
+              <Phone className="h-3.5 w-3.5" /> {t("payments.voiceVideoCredits")}
             </h4>
             {loadingPayments ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1682,7 +1726,7 @@ export function SettingsPanel() {
                 <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3">
                   <div>
                     <div className="text-xs text-muted-foreground">
-                      Voice Credits
+                      {t("payments.voiceCredits")}
                     </div>
                     <div className="text-xl font-bold text-emerald-500">
                       {balanceInfo?.balance_display || "$0.00"}
@@ -1695,7 +1739,7 @@ export function SettingsPanel() {
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-lg bg-secondary/30 px-2 py-1.5">
                     <div className="text-xs text-muted-foreground">
-                      Purchased
+                      {t("payments.purchased")}
                     </div>
                     <div className="text-sm font-semibold">
                       $
@@ -1705,7 +1749,7 @@ export function SettingsPanel() {
                     </div>
                   </div>
                   <div className="rounded-lg bg-secondary/30 px-2 py-1.5">
-                    <div className="text-xs text-muted-foreground">Used</div>
+                    <div className="text-xs text-muted-foreground">{t("payments.used")}</div>
                     <div className="text-sm font-semibold">
                       $
                       {((balanceInfo?.total_used_cents || 0) / 100).toFixed(2)}
@@ -1716,7 +1760,7 @@ export function SettingsPanel() {
                 {/* Buy */}
                 <div>
                   <label className="mb-1.5 block text-xs text-muted-foreground">
-                    Top Up
+                    {t("payments.topUp")}
                   </label>
                   <div className="grid grid-cols-3 gap-1.5 mb-2">
                     {[100, 500, 1000, 2500, 5000, 10000].map((cents) => (

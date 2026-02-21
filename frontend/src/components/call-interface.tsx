@@ -47,6 +47,7 @@ import {
   PenTool,
 } from "lucide-react";
 import { calls as callsApi, callFeatures, recording, whiteboard, video } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   useCallFeaturesStore,
   useRecordingStore,
@@ -637,6 +638,7 @@ function CallContent({
   };
 
   const totalParticipants = 1 + remoteParticipants.length;
+  const { t } = useTranslation();
 
   // Loading state
   if (connectionState === ConnectionState.Connecting) {
@@ -644,7 +646,7 @@ function CallContent({
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Joining call...</p>
+          <p className="text-muted-foreground">{t("call.joining")}</p>
         </div>
       </div>
     );
@@ -656,12 +658,12 @@ function CallContent({
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <PhoneOff className="h-10 w-10 text-muted-foreground" />
-          <p className="text-muted-foreground">Call ended</p>
+          <p className="text-muted-foreground">{t("call.ended")}</p>
           <button
             onClick={() => router.push("/dashboard")}
             className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground"
           >
-            Back to Dashboard
+            {t("call.backToDashboard")}
           </button>
         </div>
       </div>
@@ -685,13 +687,13 @@ function CallContent({
         <div className="flex items-center gap-3">
           <div className={`h-2 w-2 rounded-full ${isOnHold ? "bg-yellow-500" : "bg-green-500"}`} />
           <span className="text-sm font-medium">
-            {isOnHold ? "On Hold · " : ""}{chatName || (callType === "video" ? "Video Call" : "Voice Call")}
+            {isOnHold ? t("call.onHold") + " · " : ""}{chatName || (callType === "video" ? t("call.videoCall") : t("call.voiceCall"))}
           </span>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             {totalParticipants}
           </span>
-          {callLocked && <span className="text-xs bg-red-500/20 text-red-600 px-2 py-1 rounded">🔒 Locked</span>}
+          {callLocked && <span className="text-xs bg-red-500/20 text-red-600 px-2 py-1 rounded">{"🔒 " + t("call.locked")}</span>}
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-sm text-muted-foreground">{formatDuration(callDuration)}</span>
@@ -700,7 +702,7 @@ function CallContent({
             className={`rounded-lg p-2 text-sm transition-colors ${
               showParticipants ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
             }`}
-            title="Participants"
+            title={t("call.participants")}
           >
             <Users className="h-4 w-4" />
           </button>
@@ -815,12 +817,12 @@ function CallContent({
               <div className="flex flex-wrap justify-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 text-xl font-bold text-primary relative">
-                    You
+                    {t("call.you")}
                     {raisedHands.has(localParticipant?.identity || "") && (
                       <Hand className="absolute -top-2 -right-2 h-5 w-5 text-yellow-500" />
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">You</span>
+                  <span className="text-xs text-muted-foreground">{t("call.you")}</span>
                 </div>
                 {remoteParticipants.map((p) => (
                   <div key={p.identity} className="flex flex-col items-center gap-2">
@@ -870,15 +872,15 @@ function CallContent({
         {/* ─── Participants Sidebar ─── */}
         {showParticipants && (
           <div className="w-72 border-l border-border bg-secondary/20 p-4 overflow-y-auto">
-            <h3 className="mb-4 text-sm font-semibold">Participants ({totalParticipants})</h3>
+            <h3 className="mb-4 text-sm font-semibold">{`${t("call.participants")} (${totalParticipants})`}</h3>
             <div className="mb-2 flex items-center gap-3 rounded-lg px-2 py-2 bg-primary/5">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
-                You
+                {t("call.you")}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">You</p>
+                <p className="truncate text-sm font-medium">{t("call.you")}</p>
                 <p className="text-xs text-muted-foreground">
-                  {isMuted ? "Muted" : "Speaking"}
+                  {isMuted ? t("call.muted") : t("call.speaking")}
                 </p>
               </div>
               {isMuted ? (
@@ -898,7 +900,7 @@ function CallContent({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{p.name || p.identity}</p>
                   <p className="text-xs text-muted-foreground">
-                    {p.isSpeaking ? "Speaking" : "Listening"}
+                    {p.isSpeaking ? t("call.speaking") : t("call.listening")}
                   </p>
                 </div>
                 {!p.isMicrophoneEnabled ? (
@@ -918,8 +920,8 @@ function CallContent({
         {inCallChatOpen && (
           <div className="w-80 border-l border-border bg-secondary/10 flex flex-col">
             <div className="flex items-center justify-between border-b border-border p-4">
-              <h3 className="text-sm font-semibold">In-Call Chat</h3>
-              <button onClick={() => setInCallChatOpen(false)}>
+              <h3 className="text-sm font-semibold">{t("call.inCallChat")}</h3>
+              <button onClick={() => setInCallChatOpen(false)}>    
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -934,7 +936,7 @@ function CallContent({
             <div className="border-t border-border p-4 space-y-2">
               <input
                 type="text"
-                placeholder="Message..."
+                placeholder={t("call.messagePlaceholder")}
                 value={inCallChatMessage}
                 onChange={(e) => setInCallChatMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendInCallChat()}
@@ -944,7 +946,7 @@ function CallContent({
                 onClick={sendInCallChat}
                 className="w-full text-xs px-2 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Send
+                {t("common.send")}
               </button>
             </div>
           </div>
@@ -954,14 +956,14 @@ function CallContent({
         {showAiPanel && (
           <div className="w-80 border-l border-border bg-secondary/10 p-4 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">AI Assistant</h3>
+              <h3 className="text-sm font-semibold">{t("call.aiAssistant")}</h3>
               <button onClick={() => setShowAiPanel(false)}>
                 <X className="h-4 w-4" />
               </button>
             </div>
             {aiSuggestion && (
               <div className="bg-primary/10 rounded-lg p-3 text-xs mb-4">
-                <p className="font-medium mb-2">Suggestion:</p>
+                <p className="font-medium mb-2">{t("call.suggestion")}:</p>
                 <p className="text-muted-foreground">{aiSuggestion}</p>
               </div>
             )}
@@ -969,7 +971,7 @@ function CallContent({
               onClick={getAiSuggestion}
               className="w-full text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 mb-4"
             >
-              Get Suggestion
+              {t("call.getSuggestion")}
             </button>
           </div>
         )}
@@ -1011,13 +1013,13 @@ function CallContent({
       {showTransferModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-96">
-            <h3 className="text-sm font-semibold mb-4">Transfer Call</h3>
+            <h3 className="text-sm font-semibold mb-4">{t("call.transferCall")}</h3>
             <select
               value={transferTarget}
               onChange={(e) => setTransferTarget(e.target.value)}
               className="w-full text-xs px-3 py-2 rounded border border-border mb-4"
             >
-              <option value="">Select recipient...</option>
+              <option value="">{t("call.selectRecipient")}</option>
               {remoteParticipants.map((p) => (
                 <option key={p.identity} value={p.identity}>
                   {p.name || p.identity}
@@ -1029,7 +1031,7 @@ function CallContent({
                 onClick={initiateTransfer}
                 className="flex-1 text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Transfer
+                {t("call.transfer")}
               </button>
               <button
                 onClick={() => {
@@ -1038,7 +1040,7 @@ function CallContent({
                 }}
                 className="flex-1 text-xs px-3 py-2 rounded border border-border hover:bg-secondary"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -1048,10 +1050,10 @@ function CallContent({
       {showPollCreator && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-96">
-            <h3 className="text-sm font-semibold mb-4">Create Poll</h3>
+            <h3 className="text-sm font-semibold mb-4">{t("call.createPoll")}</h3>
             <input
               type="text"
-              placeholder="Question..."
+              placeholder={t("call.question")}
               value={pollQuestion}
               onChange={(e) => setPollQuestion(e.target.value)}
               className="w-full text-xs px-3 py-2 rounded border border-border mb-3"
@@ -1060,7 +1062,7 @@ function CallContent({
               <input
                 key={i}
                 type="text"
-                placeholder={`Option ${i + 1}`}
+                placeholder={`${t("call.addOption")} ${i + 1}`}
                 value={opt}
                 onChange={(e) => {
                   const next = [...pollOptions];
@@ -1077,14 +1079,14 @@ function CallContent({
               }}
               className="w-full text-xs px-3 py-2 rounded border border-border hover:bg-secondary mb-3"
             >
-              + Add Option
+              {"+ " + t("call.addOption")}
             </button>
             <div className="flex gap-2">
               <button
                 onClick={createPoll}
                 className="flex-1 text-xs px-3 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Create
+                {t("common.create")}
               </button>
               <button
                 onClick={() => {
@@ -1094,7 +1096,7 @@ function CallContent({
                 }}
                 className="flex-1 text-xs px-3 py-2 rounded border border-border hover:bg-secondary"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -1109,7 +1111,7 @@ function CallContent({
           className={`rounded-full p-3 transition-colors ${
             isMuted ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title={isMuted ? "Unmute" : "Mute"}
+          title={isMuted ? t("call.unmute") : t("call.mute")}
         >
           {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
@@ -1121,7 +1123,7 @@ function CallContent({
             className={`rounded-full p-3 transition-colors ${
               !isVideoOn ? "bg-red-500/20 text-red-500" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title={isVideoOn ? "Turn off camera" : "Turn on camera"}
+            title={isVideoOn ? t("call.cameraOff") : t("call.cameraOn")}
           >
             {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
           </button>
@@ -1134,7 +1136,7 @@ function CallContent({
             className={`rounded-full p-3 transition-colors ${
               isScreenSharing ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title={isScreenSharing ? "Stop sharing" : "Share screen"}
+            title={isScreenSharing ? t("call.stopSharing") : t("call.shareScreen")}
           >
             {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
           </button>
@@ -1158,7 +1160,7 @@ function CallContent({
             className={`rounded-full p-3 transition-colors ${
               isOnHold ? "bg-yellow-500/20 text-yellow-600" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title={isOnHold ? "Resume" : "Hold"}
+            title={isOnHold ? t("call.resume") : t("call.hold")}
           >
             {isOnHold ? <PlayCircle className="h-5 w-5" /> : <PauseCircle className="h-5 w-5" />}
           </button>
@@ -1172,7 +1174,7 @@ function CallContent({
               ? "bg-yellow-500/20 text-yellow-600"
               : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title="Raise hand"
+          title={t("call.raiseHand")}
         >
           <Hand className="h-5 w-5" />
         </button>
@@ -1197,7 +1199,7 @@ function CallContent({
           className={`rounded-full p-3 transition-colors ${
             inCallChatOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title="In-call chat"
+          title={t("call.inCallChat")}
         >
           <MessageCircle className="h-5 w-5" />
         </button>
@@ -1208,7 +1210,7 @@ function CallContent({
           className={`rounded-full p-3 transition-colors ${
             showAiPanel ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title="AI Assistant"
+          title={t("call.aiAssistant")}
         >
           <Zap className="h-5 w-5" />
         </button>
@@ -1217,7 +1219,7 @@ function CallContent({
         <button
           onClick={() => setShowPollCreator(!showPollCreator)}
           className="rounded-full p-3 bg-secondary text-foreground hover:bg-secondary/80"
-          title="Create poll"
+          title={t("call.createPoll")}
         >
           <BarChart3 className="h-5 w-5" />
         </button>
@@ -1227,7 +1229,7 @@ function CallContent({
           <button
             onClick={() => setShowTransferModal(!showTransferModal)}
             className="rounded-full p-3 bg-secondary text-foreground hover:bg-secondary/80"
-            title="Transfer call"
+            title={t("call.transferCall")}
           >
             <Share2 className="h-5 w-5" />
           </button>
@@ -1240,7 +1242,7 @@ function CallContent({
             className={`rounded-full p-3 transition-colors ${
               isRecording ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title={isRecording ? "Stop recording" : "Start recording"}
+            title={isRecording ? t("call.stopRecording") : t("call.startRecording")}
           >
             <Disc3 className="h-5 w-5" />
           </button>
@@ -1252,7 +1254,7 @@ function CallContent({
                   onClick={pauseRecordingHandler}
                   disabled={isPaused}
                   className="rounded p-1 text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground"
-                  title="Pause recording"
+                  title={t("call.pauseRecording")}
                 >
                   <Pause className="h-3 w-3" />
                 </button>
@@ -1260,7 +1262,7 @@ function CallContent({
                   onClick={resumeRecordingHandler}
                   disabled={!isPaused}
                   className="rounded p-1 text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground"
-                  title="Resume recording"
+                  title={t("call.resumeRecording")}
                 >
                   <Play className="h-3 w-3" />
                 </button>
@@ -1275,7 +1277,7 @@ function CallContent({
           className={`rounded-full p-3 transition-colors ${
             whiteboardOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title={whiteboardOpen ? "Close whiteboard" : "Open whiteboard"}
+          title={whiteboardOpen ? t("call.closeWhiteboard") : t("call.whiteboard")}
         >
           <PenTool className="h-5 w-5" />
         </button>
@@ -1287,13 +1289,13 @@ function CallContent({
             className={`rounded-full p-3 transition-colors ${
               showVideoQualityModal ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title="Video quality"
+            title={t("call.videoQuality")}
           >
             <BarChart3 className="h-5 w-5" />
           </button>
           {showVideoQualityModal && (
             <div className="absolute bottom-16 right-0 bg-foreground/95 text-background rounded-lg shadow-lg p-4 min-w-[200px] z-50">
-              <p className="text-xs font-semibold mb-2">Video Quality</p>
+              <p className="text-xs font-semibold mb-2">{t("call.videoQuality")}</p>
               <div className="space-y-1">
                 {(["low", "medium", "high", "hd", "fullhd", "4k"] as const).map((profile) => (
                   <button
@@ -1314,7 +1316,7 @@ function CallContent({
                 onClick={detectBandwidthHandler}
                 className="w-full mt-2 px-3 py-2 text-xs text-center rounded bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Auto Detect
+                {t("call.autoDetect")}
               </button>
             </div>
           )}
@@ -1327,7 +1329,7 @@ function CallContent({
             className={`rounded-full p-3 transition-colors relative ${
               showNotifications ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
-            title="Notifications"
+            title={t("call.notifications")}
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
@@ -1338,9 +1340,9 @@ function CallContent({
           </button>
           {showNotifications && (
             <div className="absolute bottom-16 right-0 bg-foreground/95 text-background rounded-lg shadow-lg p-4 min-w-[300px] max-h-80 overflow-y-auto z-50">
-              <p className="text-xs font-semibold mb-2">Notifications ({unreadCount})</p>
+              <p className="text-xs font-semibold mb-2">{`${t("call.notifications")} (${unreadCount})`}</p>
               {notifications.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No notifications</p>
+                <p className="text-xs text-muted-foreground">{t("call.noNotifications")}</p>
               ) : (
                 <div className="space-y-2">
                   {notifications.map((notif) => (
@@ -1370,7 +1372,7 @@ function CallContent({
           className={`rounded-full p-3 transition-colors ${
             showSettings ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
           }`}
-          title="Settings"
+          title={t("call.settings")}
         >
           <Settings className="h-5 w-5" />
         </button>
@@ -1379,7 +1381,7 @@ function CallContent({
         <button
           onClick={handleLeave}
           className="rounded-full bg-red-600 p-3 text-white transition-colors hover:bg-red-700"
-          title={isGroupCall ? "Leave call" : "End call"}
+          title={isGroupCall ? t("call.leaveCall") : t("call.endCall")}
         >
           <PhoneOff className="h-6 w-6" />
         </button>
@@ -1389,9 +1391,9 @@ function CallContent({
           <button
             onClick={handleEndForAll}
             className="rounded-full bg-red-800 px-4 py-3 text-xs font-medium text-white transition-colors hover:bg-red-900"
-            title="End call for everyone"
+            title={t("call.endForEveryone")}
           >
-            End All
+            {t("call.endAll")}
           </button>
         )}
       </div>
@@ -1411,18 +1413,19 @@ export function CallInterface({
   onLeave,
 }: CallInterfaceProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   if (!serverUrl || !token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <PhoneOff className="h-10 w-10 text-muted-foreground" />
-          <p className="text-destructive">Missing server URL or token</p>
+          <p className="text-destructive">{t("call.missingConnection")}</p>
           <button
             onClick={() => router.push("/dashboard")}
             className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground"
           >
-            Back to Dashboard
+            {t("call.backToDashboard")}
           </button>
         </div>
       </div>

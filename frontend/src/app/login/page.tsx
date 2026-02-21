@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Globe } from "lucide-react";
 import { auth } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export default function LoginPage() {
             <Globe className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold">VoiceTranslate</span>
           </Link>
-          <p className="mt-2 text-muted-foreground">Welcome back</p>
+          <p className="mt-2 text-muted-foreground">{t("auth.welcomeBack")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,7 +69,7 @@ export default function LoginPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Email or Username
+              {t("auth.emailOrUsername")}
             </label>
             <input
               type="text"
@@ -81,7 +83,7 @@ export default function LoginPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Password
+              {t("auth.password")}
             </label>
             <input
               type="password"
@@ -98,7 +100,7 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
           >
-            {isLoading ? "Logging in..." : "Log In"}
+            {isLoading ? t("auth.loggingIn") : t("auth.login")}
           </button>
         </form>
 
@@ -107,7 +109,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
+            <span className="bg-background px-2 text-muted-foreground">{t("common.or")}</span>
           </div>
         </div>
 
@@ -116,18 +118,18 @@ export default function LoginPage() {
           onClick={handleDemo}
           className="w-full rounded-lg border border-border py-3 font-medium transition-colors hover:bg-secondary"
         >
-          Try Demo (no backend needed)
+          {t("auth.tryDemo")}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("auth.dontHaveAccount")}{" "}
           <Link href="/signup" className="text-primary hover:underline">
-            Sign up
+            {t("auth.signup")}
           </Link>
         </p>
         <p className="text-center text-sm text-muted-foreground">
           <Link href="/forgot-password" className="text-primary hover:underline">
-            Forgot password?
+            {t("auth.forgotPassword")}
           </Link>
         </p>
       </div>

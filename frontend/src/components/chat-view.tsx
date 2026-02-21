@@ -18,6 +18,7 @@ import { ChatLanguageSelector } from "./chat-language-selector";
 import { ActiveCallBanner } from "./active-call-banner";
 import { GroupSettings } from "./group-settings";
 import { useRouter } from "next/navigation";
+import { useTranslation, getLanguage } from "@/lib/i18n";
 
 interface ChatViewProps {
   chatId: string;
@@ -79,6 +80,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
   const chat = chats.find((c) => c.id === chatId);
   const activeCall = activeCalls.get(chatId);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -288,9 +290,9 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
             <h2 className="text-sm font-semibold">{chatName}</h2>
             <p className="text-xs text-muted-foreground">
               {chat.chat_type === "group"
-                ? `${chat.members?.length || 0} members`
+                ? `${chat.members?.length || 0} ${t("chatView.members")}`
                 : otherMembers[0]
-                  ? `Speaks ${LANG_NAMES[otherMembers[0].preferred_language] || otherMembers[0].preferred_language}`
+                  ? `${t("chatView.speaks")} ${LANG_NAMES[otherMembers[0].preferred_language] || otherMembers[0].preferred_language}`
                   : ""}
             </p>
           </div>
@@ -309,7 +311,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
             onClick={() => handleStartCall("voice")}
             disabled={!!startingCall}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50" 
-            title="Voice call"
+            title={t("chatView.voiceCall")}
           >
             {startingCall === "voice" ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -321,7 +323,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
             onClick={() => handleStartCall("video")}
             disabled={!!startingCall}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50" 
-            title="Video call"
+            title={t("chatView.videoCall")}
           >
             {startingCall === "video" ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -333,7 +335,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
             <button
               onClick={() => setShowGroupSettings(true)}
               className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              title="Group settings"
+              title={t("chatView.groupSettings")}
             >
               <Settings2 className="h-5 w-5" />
             </button>
@@ -368,9 +370,9 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <Globe className="h-10 w-10 text-primary/30" />
-            <p>No messages yet — say hello!</p>
+            <p>{t("chatView.noMessagesYet")}</p>
             <p className="text-xs">
-              Messages will be auto-translated to each person&apos;s language
+              {t("chatView.autoTranslatedMsg")}
             </p>
           </div>
         ) : (
@@ -430,11 +432,11 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
                                 }`}
                               >
                                 {showingOriginal ? (
-                                  <>Show translated</>
+                                  <>{t("chatView.showTranslated")}</>
                                 ) : (
                                   <>
                                     {LANG_FLAGS[msg.source_language] || "🌐"}{" "}
-                                    Show original
+                                    {t("chatView.showOriginal")}
                                   </>
                                 )}
                               </button>
@@ -477,7 +479,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           {Array.from(typingUsers)
             .map((uid) => getMemberName(chat.members, uid))
             .join(", ")}{" "}
-          {typingUsers.size === 1 ? "is" : "are"} typing...
+          {typingUsers.size === 1 ? t("chatView.isTyping") : t("chatView.areTyping")}
         </div>
       )}
 
@@ -500,7 +502,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
                   handleSend();
                 }
               }}
-              placeholder="Type a message..."
+              placeholder={t("chatView.typeMessage")}
               rows={1}
               className="w-full resize-none rounded-xl bg-secondary/50 px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:bg-secondary"
               style={{ maxHeight: "120px" }}
@@ -519,7 +521,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           </button>
         </form>
         <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-          Auto-translating to {LANG_FLAGS[myLanguage]}{" "}
+          {t("chatView.autoTranslatingTo")} {LANG_FLAGS[myLanguage]}{" "}
           {LANG_NAMES[myLanguage] || myLanguage}
         </p>
       </div>

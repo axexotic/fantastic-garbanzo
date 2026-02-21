@@ -6,25 +6,7 @@ import Link from "next/link";
 import { Globe } from "lucide-react";
 import { auth } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-
-const LANGUAGES = [
-  { code: "en", name: "English", flag: "🇺🇸" },
-  { code: "th", name: "Thai", flag: "🇹🇭" },
-  { code: "es", name: "Spanish", flag: "🇪🇸" },
-  { code: "fr", name: "French", flag: "🇫🇷" },
-  { code: "de", name: "German", flag: "🇩🇪" },
-  { code: "ja", name: "Japanese", flag: "🇯🇵" },
-  { code: "ko", name: "Korean", flag: "🇰🇷" },
-  { code: "zh", name: "Chinese", flag: "🇨🇳" },
-  { code: "ar", name: "Arabic", flag: "🇸🇦" },
-  { code: "pt", name: "Portuguese", flag: "🇧🇷" },
-  { code: "ru", name: "Russian", flag: "🇷🇺" },
-  { code: "hi", name: "Hindi", flag: "🇮🇳" },
-  { code: "vi", name: "Vietnamese", flag: "🇻🇳" },
-  { code: "id", name: "Indonesian", flag: "🇮🇩" },
-  { code: "tr", name: "Turkish", flag: "🇹🇷" },
-  { code: "it", name: "Italian", flag: "🇮🇹" },
-];
+import { useTranslation, LANGUAGES } from "@/lib/i18n";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -39,6 +21,7 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const { t } = useTranslation();
 
   const update = (field: string, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -67,7 +50,7 @@ export default function SignupPage() {
             <Globe className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold">VoiceTranslate</span>
           </Link>
-          <p className="mt-2 text-muted-foreground">Create your account</p>
+          <p className="mt-2 text-muted-foreground">{t("auth.createAccount")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,7 +62,7 @@ export default function SignupPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Email
+              {t("auth.email")}
             </label>
             <input
               type="email"
@@ -93,7 +76,7 @@ export default function SignupPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Username
+              {t("auth.username")}
             </label>
             <input
               type="text"
@@ -107,7 +90,7 @@ export default function SignupPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Display Name
+              {t("auth.displayName")}
             </label>
             <input
               type="text"
@@ -121,7 +104,7 @@ export default function SignupPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Password
+              {t("auth.password")}
             </label>
             <input
               type="password"
@@ -136,7 +119,7 @@ export default function SignupPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
-              Your Language
+              {t("auth.yourLanguage")}
             </label>
             <select
               value={form.preferred_language}
@@ -160,13 +143,13 @@ export default function SignupPage() {
               required
             />
             <span>
-              I agree to the{" "}
+              {t("auth.agreeToTerms")}{" "}
               <Link href="/terms" target="_blank" className="text-primary hover:underline">
-                Terms of Service
+                {t("auth.termsOfService")}
               </Link>{" "}
-              and{" "}
+              {t("auth.and")}{" "}
               <Link href="/privacy" target="_blank" className="text-primary hover:underline">
-                Privacy Policy
+                {t("auth.privacyPolicy")}
               </Link>
             </span>
           </label>
@@ -176,14 +159,14 @@ export default function SignupPage() {
             disabled={isLoading || !agreedToTerms}
             className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
           >
-            {isLoading ? "Creating account..." : "Sign Up"}
+            {isLoading ? t("auth.creatingAccount") : t("auth.signup")}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("auth.alreadyHaveAccount")}{" "}
           <Link href="/login" className="text-primary hover:underline">
-            Log in
+            {t("auth.login")}
           </Link>
         </p>
       </div>

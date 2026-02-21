@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Phone, PhoneOff, Video, X } from "lucide-react";
 import { calls as callsApi } from "@/lib/api";
 import { useCallStore, type IncomingCallData } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 
 interface IncomingCallModalProps {
   call: IncomingCallData;
@@ -16,6 +17,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
   const [joining, setJoining] = useState(false);
   const [declining, setDeclining] = useState(false);
   const { setIncomingCall } = useCallStore();
+  const { t } = useTranslation();
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -41,7 +43,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
       );
     } catch (err: any) {
       console.error("Failed to join call:", err);
-      alert(err.message || "Failed to join call");
+      alert(err.message || t("call.failedJoin"));
     } finally {
       setJoining(false);
     }
@@ -76,7 +78,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
           </div>
           <h2 className="text-xl font-bold">{call.initiator_name}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Incoming {call.call_type} call...
+            {t("call.incomingCall", { type: call.call_type })}
           </p>
         </div>
 
@@ -109,7 +111,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
                 <PhoneOff className="h-7 w-7" />
               )}
             </div>
-            <span className="text-xs text-muted-foreground">Decline</span>
+            <span className="text-xs text-muted-foreground">{t("call.decline")}</span>
           </button>
 
           {/* Accept */}
@@ -125,7 +127,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
                 <Phone className="h-7 w-7" />
               )}
             </div>
-            <span className="text-xs text-muted-foreground">Accept</span>
+            <span className="text-xs text-muted-foreground">{t("call.accept")}</span>
           </button>
         </div>
       </div>

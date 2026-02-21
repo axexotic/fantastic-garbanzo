@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Phone, Users, Video } from "lucide-react";
 import { calls as callsApi } from "@/lib/api";
 import type { ActiveCallData } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 
 interface ActiveCallBannerProps {
   call: ActiveCallData;
@@ -13,6 +14,7 @@ interface ActiveCallBannerProps {
 export function ActiveCallBanner({ call }: ActiveCallBannerProps) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
+  const { t } = useTranslation();
 
   const handleJoin = async () => {
     setJoining(true);
@@ -41,11 +43,11 @@ export function ActiveCallBanner({ call }: ActiveCallBannerProps) {
         </div>
         <div>
           <p className="text-sm font-medium text-green-600 dark:text-green-400">
-            {call.call_type === "video" ? "Video" : "Voice"} call in progress
+            {t("call.callInProgress", { type: call.call_type === "video" ? t("call.videoCall") : t("call.voiceCall") })}
           </p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Users className="h-3 w-3" />
-            {call.participant_count} participant{call.participant_count !== 1 ? "s" : ""}
+            {t("call.participantCount", { count: String(call.participant_count) })}
           </p>
         </div>
       </div>
@@ -57,7 +59,7 @@ export function ActiveCallBanner({ call }: ActiveCallBannerProps) {
         {joining ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          "Join"
+          t("call.join")
         )}
       </button>
     </div>

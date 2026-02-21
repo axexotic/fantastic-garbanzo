@@ -14,6 +14,7 @@ import {
 import { useFriendsStore, useChatStore } from "@/lib/store";
 import { friends as friendsApi, chats as chatsApi } from "@/lib/api";
 import type { FriendBrief } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 const LANG_FLAGS: Record<string, string> = {
   en: "🇬🇧", th: "🇹🇭", es: "🇪🇸", fr: "🇫🇷", de: "🇩🇪",
@@ -27,6 +28,7 @@ export function FriendsPanel() {
   const { friends, incomingRequests, setFriends, setIncomingRequests, removeFriend } =
     useFriendsStore();
   const { addChat, setActiveChat } = useChatStore();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<Tab>("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,7 +92,7 @@ export function FriendsPanel() {
   };
 
   const handleUnfriend = async (friendId: string) => {
-    if (!confirm("Remove this friend?")) return;
+    if (!confirm(t("friends.removeFriend"))) return;
     setActionLoading(friendId);
     try {
       await friendsApi.unfriend(friendId);
@@ -121,18 +123,18 @@ export function FriendsPanel() {
     <div className="flex flex-col">
       {/* Tabs */}
       <div className="flex border-b border-border">
-        {(["friends", "requests", "search"] as Tab[]).map((t) => (
+        {(["friends", "requests", "search"] as Tab[]).map((tabItem) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 text-sm font-medium capitalize transition-colors ${
-              tab === t
+            key={tabItem}
+            onClick={() => setTab(tabItem)}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              tab === tabItem
                 ? "border-b-2 border-primary text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t}
-            {t === "requests" && incomingRequests.length > 0 && (
+            {tabItem === "friends" ? t("friends.friends") : tabItem === "requests" ? t("friends.requests") : t("friends.search")}
+            {tabItem === "requests" && incomingRequests.length > 0 && (
               <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                 {incomingRequests.length}
               </span>
@@ -147,7 +149,7 @@ export function FriendsPanel() {
           <div>
             {friends.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No friends yet. Search for people to add!
+                {t("friends.noFriends")}
               </div>
             ) : (
               friends.map((friend) => (
@@ -178,7 +180,7 @@ export function FriendsPanel() {
                       onClick={() => handleStartChat(friend.id)}
                       disabled={actionLoading === friend.id}
                       className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                      title="Message"
+                      title={t("friends.message")}
                     >
                       <MessageCircle className="h-4 w-4" />
                     </button>
@@ -186,7 +188,7 @@ export function FriendsPanel() {
                       onClick={() => handleUnfriend(friend.id)}
                       disabled={actionLoading === friend.id}
                       className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      title="Unfriend"
+                      title={t("friends.unfriend")}
                     >
                       <UserMinus className="h-4 w-4" />
                     </button>
@@ -202,7 +204,7 @@ export function FriendsPanel() {
           <div>
             {incomingRequests.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No pending friend requests
+                {t("friends.noRequests")}
               </div>
             ) : (
               incomingRequests.map((req) => (
@@ -227,7 +229,7 @@ export function FriendsPanel() {
                       onClick={() => handleAccept(req.id)}
                       disabled={actionLoading === req.id}
                       className="rounded-lg bg-primary/10 p-2 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                      title="Accept"
+                      title={t("friends.accept")}
                     >
                       {actionLoading === req.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -239,7 +241,7 @@ export function FriendsPanel() {
                       onClick={() => handleReject(req.id)}
                       disabled={actionLoading === req.id}
                       className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      title="Reject"
+                      title={t("friends.reject")}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -265,7 +267,7 @@ export function FriendsPanel() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search by username..."
+                    placeholder={t("friends.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full rounded-lg bg-secondary/50 py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:bg-secondary"
@@ -276,7 +278,7 @@ export function FriendsPanel() {
                   disabled={searching}
                   className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Go"}
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.go")}
                 </button>
               </form>
             </div>
@@ -310,8 +312,8 @@ export function FriendsPanel() {
                   }`}
                   title={
                     (user as any).status === "request_sent"
-                      ? "Request sent"
-                      : "Send friend request"
+                      ? t("friends.requestSent")
+                      : t("friends.sendRequest")
                   }
                 >
                   {actionLoading === user.username ? (

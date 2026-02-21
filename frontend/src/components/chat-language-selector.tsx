@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { chats as chatsApi } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 
 const LANGUAGES = [
   { code: "en", label: "English", flag: "🇬🇧" },
@@ -37,6 +38,7 @@ export function ChatLanguageSelector({
 }: ChatLanguageSelectorProps) {
   const [saving, setSaving] = useState(false);
   const { updateChat } = useChatStore();
+  const { t } = useTranslation();
 
   const handleSelect = async (langCode: string) => {
     if (langCode === currentLanguage) {
@@ -58,7 +60,7 @@ export function ChatLanguageSelector({
   return (
     <div className="border-b border-border bg-secondary/30 px-5 py-3">
       <p className="mb-2 text-xs font-medium text-muted-foreground">
-        Receive messages in:
+        {t("chatView.receiveMessagesIn")}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {LANGUAGES.map((lang) => (
@@ -82,7 +84,7 @@ export function ChatLanguageSelector({
       </div>
       {saving && (
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+          <Loader2 className="h-3 w-3 animate-spin" /> {t("chatView.updating")}
         </div>
       )}
     </div>

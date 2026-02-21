@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n";
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -16,21 +17,22 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("auth.passwordTooShort"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("auth.passwordsMustMatch"));
       return;
     }
     if (!token) {
-      setError("Missing reset token. Please use the link from your email.");
+      setError(t("auth.missingResetToken"));
       return;
     }
 
@@ -58,16 +60,16 @@ function ResetPasswordForm() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-primary">Set New Password</h1>
+          <h1 className="text-2xl font-bold text-primary">{t("auth.setNewPassword")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Enter your new password below
+            {t("auth.setNewPasswordDesc")}
           </p>
         </div>
 
         {success ? (
           <div className="space-y-4 text-center">
             <div className="rounded-lg bg-green-500/10 p-4 text-sm text-green-400">
-              Password reset successfully! Redirecting to login...
+              {t("auth.passwordResetSuccess")}
             </div>
           </div>
         ) : (
@@ -79,7 +81,7 @@ function ResetPasswordForm() {
             )}
             <div>
               <label className="mb-1 block text-sm text-muted-foreground">
-                New Password
+                {t("auth.newPassword")}
               </label>
               <input
                 type="password"
@@ -87,12 +89,12 @@ function ResetPasswordForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
-                placeholder="At least 6 characters"
+                placeholder={t("auth.atLeast6Chars")}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm text-muted-foreground">
-                Confirm Password
+                {t("auth.confirmPassword")}
               </label>
               <input
                 type="password"
@@ -100,7 +102,7 @@ function ResetPasswordForm() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
-                placeholder="Repeat your password"
+                placeholder={t("auth.repeatPassword")}
               />
             </div>
             <button
@@ -108,11 +110,11 @@ function ResetPasswordForm() {
               disabled={loading}
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Resetting..." : "Reset Password"}
+              {loading ? t("auth.resetting") : t("auth.resetPassword")}
             </button>
             <p className="text-center text-sm text-muted-foreground">
               <Link href="/login" className="text-primary hover:underline">
-                Back to Login
+                {t("auth.backToLogin")}
               </Link>
             </p>
           </form>

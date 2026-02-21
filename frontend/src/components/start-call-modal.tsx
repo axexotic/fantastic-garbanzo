@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Phone, Video, X } from "lucide-react";
 import { calls as callsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface StartCallModalProps {
   chatId: string;
@@ -13,6 +14,7 @@ interface StartCallModalProps {
 export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useTranslation();
 
   const handleStartCall = async (type: "voice" | "video") => {
     setLoading(true);
@@ -23,7 +25,7 @@ export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProp
       window.open(`/call/${call.room_name}?callId=${call.id}&type=${type}`, "_blank");
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to start call");
+      setError(err.message || t("call.failedStart"));
     } finally {
       setLoading(false);
     }
@@ -33,14 +35,14 @@ export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Start a Call</h2>
+          <h2 className="text-lg font-semibold">{t("call.startCall")}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <p className="mb-6 text-sm text-muted-foreground">
-          Start a call with <span className="font-medium text-foreground">{chatName}</span>
+          {t("call.startCallWith", { name: chatName })}
         </p>
 
         {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
@@ -56,7 +58,7 @@ export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProp
             ) : (
               <>
                 <Phone className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">Voice Call</span>
+                <span className="text-sm font-medium">{t("call.voiceCall")}</span>
               </>
             )}
           </button>
@@ -70,7 +72,7 @@ export function StartCallModal({ chatId, chatName, onClose }: StartCallModalProp
             ) : (
               <>
                 <Video className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium">Video Call</span>
+                <span className="text-sm font-medium">{t("call.videoCall")}</span>
               </>
             )}
           </button>

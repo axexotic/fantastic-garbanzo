@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslation } from "@/lib/i18n";
+
 /**
  * Real-time caption overlay — shows transcript + translation.
  */
@@ -8,13 +12,15 @@ interface CaptionOverlayProps {
 }
 
 export function CaptionOverlay({ transcript, translation }: CaptionOverlayProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="w-full max-w-md space-y-3 rounded-xl border border-border bg-secondary/30 p-4">
       {/* Original transcript */}
       {transcript && (
         <div>
           <span className="text-xs font-medium uppercase text-muted-foreground">
-            Original
+            {t("call.original")}
           </span>
           <p className="mt-1 text-sm text-muted-foreground">{transcript}</p>
         </div>
@@ -24,7 +30,7 @@ export function CaptionOverlay({ transcript, translation }: CaptionOverlayProps)
       {translation && (
         <div>
           <span className="text-xs font-medium uppercase text-primary">
-            Translation
+            {t("call.translation")}
           </span>
           <p className="mt-1 text-lg font-medium">{translation}</p>
         </div>
@@ -33,7 +39,7 @@ export function CaptionOverlay({ transcript, translation }: CaptionOverlayProps)
       {/* Empty state */}
       {!transcript && !translation && (
         <p className="text-center text-sm text-muted-foreground">
-          Listening...
+          {t("call.listening")}
         </p>
       )}
     </div>

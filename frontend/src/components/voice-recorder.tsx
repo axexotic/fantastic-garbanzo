@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Play, Square, Pause, RotateCcw, Upload, Check, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface VoiceRecorderProps {
   minDuration?: number; // Minimum recording duration in seconds
@@ -18,6 +19,7 @@ export function VoiceRecorder({
   onRecordingComplete,
   disabled = false,
 }: VoiceRecorderProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<RecordingState>("idle");
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -235,13 +237,13 @@ export function VoiceRecorder({
       <div className="text-center">
         <div className="font-mono text-3xl font-bold">{formatTime(duration)}</div>
         <div className="mt-1 text-sm text-muted-foreground">
-          {state === "idle" && `Record at least ${formatTime(minDuration)} of your voice`}
+          {state === "idle" && t("recorder.recordAtLeast", { time: formatTime(minDuration) })}
           {state === "recording" && (
             isMinDurationMet
-              ? "Minimum reached! You can stop or continue recording"
-              : `${formatTime(minDuration - duration)} more needed`
+              ? t("recorder.minReached")
+              : t("recorder.moreNeeded", { time: formatTime(minDuration - duration) })
           )}
-          {state === "recorded" && "Recording complete - review or re-record"}
+          {state === "recorded" && t("recorder.reviewOrReRecord")}
         </div>
       </div>
 
@@ -254,7 +256,7 @@ export function VoiceRecorder({
             className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
           >
             <Mic className="h-5 w-5" />
-            Start Recording
+            {t("recorder.start")}
           </button>
         )}
 
@@ -267,10 +269,10 @@ export function VoiceRecorder({
                 ? "bg-red-500 text-white hover:bg-red-600"
                 : "bg-secondary text-muted-foreground cursor-not-allowed"
             }`}
-            title={isMinDurationMet ? "Stop recording" : `Record ${formatTime(minDuration - duration)} more`}
+            title={isMinDurationMet ? t("recorder.stop") : t("recorder.moreNeeded", { time: formatTime(minDuration - duration) })}
           >
             <Square className="h-5 w-5" />
-            Stop Recording
+            {t("recorder.stop")}
           </button>
         )}
 
@@ -283,12 +285,12 @@ export function VoiceRecorder({
               {isPlaying ? (
                 <>
                   <Pause className="h-5 w-5" />
-                  Pause
+                  {t("recorder.pause")}
                 </>
               ) : (
                 <>
                   <Play className="h-5 w-5" />
-                  Play
+                  {t("recorder.play")}
                 </>
               )}
             </button>
@@ -298,7 +300,7 @@ export function VoiceRecorder({
               className="flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 font-medium transition-colors hover:bg-secondary"
             >
               <RotateCcw className="h-5 w-5" />
-              Re-record
+              {t("recorder.reRecord")}
             </button>
 
             <button
@@ -307,7 +309,7 @@ export function VoiceRecorder({
               className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-green-600 disabled:opacity-50"
             >
               <Upload className="h-5 w-5" />
-              Use This Recording
+              {t("recorder.useThis")}
             </button>
           </>
         )}
@@ -315,13 +317,13 @@ export function VoiceRecorder({
 
       {/* Tips */}
       <div className="max-w-md rounded-xl bg-secondary/50 p-4 text-sm">
-        <h4 className="mb-2 font-semibold">Tips for best voice cloning:</h4>
+        <h4 className="mb-2 font-semibold">{t("recorder.tips")}</h4>
         <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-          <li>Speak naturally in your normal voice</li>
-          <li>Find a quiet room with no background noise</li>
-          <li>Vary your tone — read a story or describe your day</li>
-          <li>Keep a consistent distance from your microphone</li>
-          <li>Longer recordings (60-120s) produce better results</li>
+          <li>{t("recorder.tip1")}</li>
+          <li>{t("recorder.tip2")}</li>
+          <li>{t("recorder.tip3")}</li>
+          <li>{t("recorder.tip4")}</li>
+          <li>{t("recorder.tip5")}</li>
         </ul>
       </div>
     </div>

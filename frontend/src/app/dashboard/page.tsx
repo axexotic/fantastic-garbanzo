@@ -22,6 +22,7 @@ import { NewChatModal } from "@/components/new-chat-modal";
 import { SettingsPanel } from "@/components/settings-panel";
 import { VoiceSetupModal } from "@/components/voice-setup-modal";
 import { IncomingCallModal } from "@/components/incoming-call-modal";
+import { useTranslation } from "@/lib/i18n";
 
 type SidePanel = "chats" | "friends" | "settings";
 
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const { setFriends, setIncomingRequests } = useFriendsStore();
   const { incomingCall, setIncomingCall } = useCallStore();
   const socket = useSocket();
+  const { t } = useTranslation();
 
   const [sidePanel, setSidePanel] = useState<SidePanel>("chats");
   const [showNewChat, setShowNewChat] = useState(false);
@@ -127,7 +129,7 @@ export default function DashboardPage() {
             className={`rounded-xl p-3 transition-colors ${
               sidePanel === "chats" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
-            title="Chats"
+            title={t("dash.chats")}
           >
             <MessageCircle className="h-5 w-5" />
           </button>
@@ -136,7 +138,7 @@ export default function DashboardPage() {
             className={`rounded-xl p-3 transition-colors ${
               sidePanel === "friends" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
-            title="Friends"
+            title={t("dash.friends")}
           >
             <Users className="h-5 w-5" />
           </button>
@@ -148,14 +150,14 @@ export default function DashboardPage() {
             className={`rounded-xl p-3 transition-colors ${
               sidePanel === "settings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
-            title="Settings"
+            title={t("dash.settings")}
           >
             <Settings className="h-5 w-5" />
           </button>
           <button
             onClick={handleLogout}
             className="rounded-xl p-3 text-muted-foreground transition-colors hover:text-destructive"
-            title="Logout"
+            title={t("dash.logout")}
           >
             <LogOut className="h-5 w-5" />
           </button>
@@ -166,12 +168,12 @@ export default function DashboardPage() {
       <div className="flex w-80 flex-col border-r border-border bg-background">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-lg font-semibold capitalize">{sidePanel}</h2>
+          <h2 className="text-lg font-semibold">{sidePanel === "chats" ? t("dash.chats") : sidePanel === "friends" ? t("dash.friends") : t("dash.settings")}</h2>
           {sidePanel === "chats" && (
             <button
               onClick={() => setShowNewChat(true)}
               className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              title="New chat"
+              title={t("dash.newChat")}
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -204,10 +206,9 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">
             <Globe className="h-16 w-16 text-primary/30" />
-            <p className="text-lg">Select a chat to start messaging</p>
+            <p className="text-lg">{t("dash.selectChat")}</p>
             <p className="text-sm">
-              Messages are automatically translated to each person&apos;s
-              language
+              {t("dash.autoTranslated")}
             </p>
           </div>
         )}

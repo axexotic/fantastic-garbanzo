@@ -5,6 +5,7 @@ import { X, Mic, Volume2, Globe, Sparkles, ChevronRight, Loader2, CheckCircle2, 
 import { VoiceRecorder } from "./voice-recorder";
 import { voice as voiceApi, preferences as prefsApi } from "@/lib/api";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n";
 
 interface VoiceSetupModalProps {
   onClose: () => void;
@@ -17,6 +18,7 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
   const [step, setStep] = useState<Step>("intro");
   const [error, setError] = useState<string | null>(null);
   const [voiceConsent, setVoiceConsent] = useState(false);
+  const { t } = useTranslation();
 
   const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
     setStep("processing");
@@ -28,7 +30,7 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
       setStep("success");
     } catch (err: any) {
       console.error("Voice cloning failed:", err);
-      setError(err.message || "Failed to clone voice. Please try again.");
+      setError(err.message || t("voiceSetup.failedClone"));
       setStep("record");
     }
   };
@@ -61,9 +63,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">Clone Your Voice</h2>
+              <h2 className="text-2xl font-bold">{t("voiceSetup.title")}</h2>
               <p className="mt-2 text-muted-foreground">
-                Create your personal voice profile for live call translation
+                {t("voiceSetup.subtitle")}
               </p>
             </div>
 
@@ -74,10 +76,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
                   <Mic className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Your Voice, Every Language</h3>
+                  <h3 className="font-semibold">{t("voiceSetup.feature1Title")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    When you call someone, they&apos;ll hear YOU speaking their language,
-                    not a generic voice.
+                    {t("voiceSetup.feature1Desc")}
                   </p>
                 </div>
               </div>
@@ -87,10 +88,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
                   <Globe className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Natural Conversations</h3>
+                  <h3 className="font-semibold">{t("voiceSetup.feature2Title")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Your personality and tone are preserved across 20+ languages
-                    for more authentic communication.
+                    {t("voiceSetup.feature2Desc")}
                   </p>
                 </div>
               </div>
@@ -100,10 +100,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
                   <Volume2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">60 Second Setup</h3>
+                  <h3 className="font-semibold">{t("voiceSetup.feature3Title")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Just record 60 seconds of yourself speaking naturally. Our AI
-                    does the rest.
+                    {t("voiceSetup.feature3Desc")}
                   </p>
                 </div>
               </div>
@@ -114,11 +113,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
               <div className="flex items-start gap-3">
                 <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Voice Data Consent</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{t("voiceSetup.consent")}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Your voice recording will be processed by ElevenLabs for voice cloning.
-                    The voice profile is stored securely and used only for call translation.
-                    You can delete it anytime in Settings.
+                    {t("voiceSetup.consentText")}
                   </p>
                   <label className="mt-3 flex items-center gap-2 text-sm">
                     <input
@@ -128,9 +125,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
                       className="rounded border-border"
                     />
                     <span className="text-muted-foreground">
-                      I consent to recording and processing my voice data per the{" "}
+                      {t("voiceSetup.consentCheckbox")}{" "}
                       <Link href="/privacy" target="_blank" className="text-primary hover:underline">
-                        Privacy Policy
+                        {t("auth.privacyPolicy")}
                       </Link>
                     </span>
                   </label>
@@ -145,14 +142,14 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
                 disabled={!voiceConsent}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
               >
-                Set Up Voice Profile
+                {t("voiceSetup.setupBtn")}
                 <ChevronRight className="h-5 w-5" />
               </button>
               <button
                 onClick={handleSkip}
                 className="w-full rounded-xl py-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
-                Skip for now — I&apos;ll use a default voice
+                {t("voiceSetup.skip")}
               </button>
             </div>
           </div>
@@ -162,10 +159,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
         {step === "record" && (
           <div className="p-8">
             <div className="mb-6 text-center">
-              <h2 className="text-2xl font-bold">Record Your Voice</h2>
+              <h2 className="text-2xl font-bold">{t("voiceSetup.recordTitle")}</h2>
               <p className="mt-2 text-muted-foreground">
-                Speak naturally for at least 60 seconds. Read a story, describe your day,
-                or just talk!
+                {t("voiceSetup.recordDesc")}
               </p>
             </div>
 
@@ -196,9 +192,9 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
         {step === "processing" && (
           <div className="flex flex-col items-center justify-center p-12">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            <h2 className="mt-6 text-2xl font-bold">Creating Your Voice Profile</h2>
+            <h2 className="mt-6 text-2xl font-bold">{t("voiceSetup.creatingTitle")}</h2>
             <p className="mt-2 text-center text-muted-foreground">
-              Our AI is analyzing your voice patterns. This usually takes 30-60 seconds...
+              {t("voiceSetup.creatingDesc")}
             </p>
             <div className="mt-8 w-full max-w-xs">
               <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
@@ -214,24 +210,20 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
-            <h2 className="mt-6 text-2xl font-bold">Voice Profile Created!</h2>
+            <h2 className="mt-6 text-2xl font-bold">{t("voiceSetup.doneTitle")}</h2>
             <p className="mt-2 text-center text-muted-foreground">
-              Your voice is now ready for live translation calls. When you call someone,
-              they&apos;ll hear your voice speaking their language!
+              {t("voiceSetup.doneDesc")}
             </p>
 
-            <div className="mt-8 rounded-xl bg-secondary/50 p-4 text-center text-sm">
-              <span className="font-medium">Pro tip:</span>{" "}
-              <span className="text-muted-foreground">
-                You can update your voice profile anytime in Settings.
-              </span>
+            <div className="mt-8 rounded-xl bg-secondary/50 p-4 text-center text-sm text-muted-foreground">
+              {t("voiceSetup.proTip")}
             </div>
 
             <button
               onClick={onComplete}
               className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3 font-semibold text-primary-foreground transition-colors hover:opacity-90"
             >
-              Start Chatting
+              {t("voiceSetup.startChatting")}
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
