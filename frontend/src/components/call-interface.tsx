@@ -64,6 +64,7 @@ interface CallInterfaceProps {
   callId: string;
   callType: "voice" | "video";
   chatName?: string;
+  chatId?: string;
   isGroupCall?: boolean;
   onLeave?: () => void;
 }
@@ -129,12 +130,14 @@ function CallContent({
   callId,
   callType,
   chatName,
+  chatId,
   isGroupCall,
   onLeave,
 }: {
   callId: string;
   callType: "voice" | "video";
   chatName?: string;
+  chatId?: string;
   isGroupCall?: boolean;
   onLeave?: () => void;
 }) {
@@ -354,33 +357,33 @@ function CallContent({
   const sendReaction = useCallback(
     async (emoji: string) => {
       try {
-        await callFeatures.sendReaction(callId, emoji);
+        await callFeatures.sendReaction(callId, emoji, chatId);
         addReaction({ user_id: localParticipant?.identity || "local", emoji, timestamp: Date.now() });
       } catch (e) {
         console.error("Failed to send reaction:", e);
       }
     },
-    [callId, localParticipant, addReaction]
+    [callId, chatId, localParticipant, addReaction]
   );
 
   const toggleRaiseHand = useCallback(async () => {
     const raised = raisedHands.has(localParticipant?.identity || "");
     try {
       if (raised) {
-        await callFeatures.lowerHand(callId);
+        await callFeatures.lowerHand(callId, chatId);
       } else {
-        await callFeatures.raiseHand(callId);
+        await callFeatures.raiseHand(callId, chatId);
       }
       toggleHand(localParticipant?.identity || "", !raised);
     } catch (e) {
       console.error("Failed to toggle hand:", e);
     }
-  }, [callId, raisedHands, localParticipant, toggleHand]);
+  }, [callId, chatId, raisedHands, localParticipant, toggleHand]);
 
   const createPoll = useCallback(async () => {
     if (!pollQuestion.trim() || pollOptions.some((o) => !o.trim())) return;
     try {
-      const poll = await callFeatures.createPoll(callId, pollQuestion, pollOptions);
+      const poll = await callFeatures.createPoll(callId, pollQuestion, pollOptions, chatId);
       setActivePoll(poll);
       setPollQuestion("");
       setPollOptions(["", ""]);
@@ -394,7 +397,7 @@ function CallContent({
     async (optionIndex: number) => {
       if (!activePoll) return;
       try {
-        await callFeatures.votePoll(callId, activePoll.id, optionIndex);
+        await callFeatures.votePoll(callId, activePoll.id, optionIndex, chatId);
       } catch (e) {
         console.error("Failed to vote:", e);
       }
@@ -405,7 +408,7 @@ function CallContent({
   const sendInCallChat = useCallback(async () => {
     if (!inCallChatMessage.trim()) return;
     try {
-      await callFeatures.sendInCallChat(callId, inCallChatMessage);
+      await callFeatures.sendInCallChat(callId, inCallChatMessage, chatId);
       addInCallMessage({
         user_id: localParticipant?.identity || "local",
         username: localParticipant?.name || "You",
@@ -420,7 +423,7 @@ function CallContent({
 
   const shareFile = useCallback(async (file: File) => {
     try {
-      await callFeatures.shareFile(callId, file.name, URL.createObjectURL(file), file.size);
+      await callFeatures.shareFile(callId, file.name, URL.createObjectURL(file), file.size, chatId);
       setSharedFile({
         name: file.name,
         size: file.size,
@@ -561,7 +564,7 @@ function CallContent({
   const toggleWhiteboard = useCallback(async () => {
     try {
       if (!whiteboardOpen) {
-        await whiteboard.create(callId);
+        await whiteboard.create(callId, chatId);
         setWhiteboardOpen(true);
         addNotification({
           id: `notif-${Date.now()}`,
@@ -1409,6 +1412,7 @@ export function CallInterface({
   callId,
   callType,
   chatName,
+  chatId,
   isGroupCall,
   onLeave,
 }: CallInterfaceProps) {
@@ -1447,6 +1451,7 @@ export function CallInterface({
         callId={callId}
         callType={callType}
         chatName={chatName}
+        chatId={chatId}
         isGroupCall={isGroupCall}
         onLeave={onLeave}
       />

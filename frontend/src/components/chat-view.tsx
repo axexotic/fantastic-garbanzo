@@ -228,7 +228,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
       const call = await callsApi.start(chatId, callType);
       const isGroup = chat?.chat_type === "group";
       const name = encodeURIComponent(chatName);
-      router.push(`/call/${call.room_name}?callId=${call.id}&type=${callType}&chatName=${name}&group=${isGroup}`);
+      router.push(`/call/${call.room_name}?callId=${call.id}&type=${callType}&chatName=${name}&group=${isGroup}&chatId=${chatId}`);
     } catch (err: any) {
       console.error("Failed to start call:", err);
       alert(err.message || "Failed to start call");

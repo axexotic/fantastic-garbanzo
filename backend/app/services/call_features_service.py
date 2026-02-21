@@ -16,7 +16,7 @@ class CallFeaturesService:
     async def hold_call(self, call_id: str, user_id: str) -> bool:
         """Put a call on hold for a specific user."""
         key = f"call:{call_id}:hold:{user_id}"
-        await redis_service.set(key, datetime.utcnow().isoformat(), ex=3600)
+        await redis_service.set(key, datetime.utcnow().isoformat(), 3600)
         return True
 
     async def resume_call(self, call_id: str, user_id: str) -> bool:
@@ -45,7 +45,7 @@ class CallFeaturesService:
             "status": "pending",
             "created_at": datetime.utcnow().isoformat(),
         }
-        await redis_service.set(key, str(data), ex=120)
+        await redis_service.set(key, str(data), 120)
         return {"transfer_id": transfer_id, **data}
 
     # ─── Call Waiting ────────────────────────────────────────
@@ -54,7 +54,7 @@ class CallFeaturesService:
         """Add a call to the user's waiting queue."""
         key = f"user:{user_id}:waiting_calls"
         await redis_service.set(
-            f"{key}:{call_id}", str(call_data), ex=120
+            f"{key}:{call_id}", str(call_data), 120
         )
 
     async def get_waiting_calls(self, user_id: str) -> list:
@@ -67,7 +67,7 @@ class CallFeaturesService:
     async def lock_call(self, call_id: str, password: str) -> bool:
         """Lock a call with a password."""
         key = f"call:{call_id}:lock"
-        await redis_service.set(key, password, ex=86400)
+        await redis_service.set(key, password, 86400)
         return True
 
     async def unlock_call(self, call_id: str) -> bool:
@@ -93,7 +93,7 @@ class CallFeaturesService:
     async def start_speaking(self, call_id: str, user_id: str) -> None:
         """Record when a user starts speaking."""
         key = f"call:{call_id}:speaking:{user_id}:start"
-        await redis_service.set(key, datetime.utcnow().isoformat(), ex=86400)
+        await redis_service.set(key, datetime.utcnow().isoformat(), 86400)
 
     async def stop_speaking(self, call_id: str, user_id: str) -> float:
         """Record when a user stops speaking, return duration."""
@@ -109,7 +109,7 @@ class CallFeaturesService:
 
         current_total = await redis_service.get(total_key)
         total = float(current_total or 0) + duration
-        await redis_service.set(total_key, str(total), ex=86400)
+        await redis_service.set(total_key, str(total), 86400)
         await redis_service.delete(start_key)
 
         return total
@@ -124,7 +124,7 @@ class CallFeaturesService:
 
     async def raise_hand(self, call_id: str, user_id: str) -> bool:
         key = f"call:{call_id}:hand:{user_id}"
-        await redis_service.set(key, "1", ex=3600)
+        await redis_service.set(key, "1", 3600)
         return True
 
     async def lower_hand(self, call_id: str, user_id: str) -> bool:
@@ -161,7 +161,7 @@ class CallFeaturesService:
         }
         key = f"call:{call_id}:poll:{poll_id}"
         import json
-        await redis_service.set(key, json.dumps(poll), ex=86400)
+        await redis_service.set(key, json.dumps(poll), 86400)
         return poll
 
     async def vote_poll(
@@ -180,7 +180,7 @@ class CallFeaturesService:
         # Add new vote
         if option in poll["options"]:
             poll["options"][option].append(user_id)
-        await redis_service.set(key, json.dumps(poll), ex=86400)
+        await redis_service.set(key, json.dumps(poll), 86400)
         return poll
 
     # ─── Engagement Score ────────────────────────────────────

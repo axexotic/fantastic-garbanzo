@@ -707,23 +707,23 @@ export const callFeatures = {
     request("/api/calls/features/verify-lock", { method: "POST", body: JSON.stringify({ call_id: callId, pin }) }),
 
   // Reactions & Raise Hand
-  sendReaction: (callId: string, emoji: string) =>
-    request("/api/calls/features/reaction", { method: "POST", body: JSON.stringify({ call_id: callId, emoji }) }),
-  raiseHand: (callId: string) =>
-    request("/api/calls/features/raise-hand", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
-  lowerHand: (callId: string) =>
-    request("/api/calls/features/lower-hand", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  sendReaction: (callId: string, emoji: string, chatId?: string) =>
+    request("/api/calls/features/reaction", { method: "POST", body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, emoji }) }),
+  raiseHand: (callId: string, chatId?: string) =>
+    request("/api/calls/features/raise-hand", { method: "POST", body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined }) }),
+  lowerHand: (callId: string, chatId?: string) =>
+    request("/api/calls/features/lower-hand", { method: "POST", body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined }) }),
 
   // Polls
-  createPoll: (callId: string, question: string, options: string[]) =>
+  createPoll: (callId: string, question: string, options: string[], chatId?: string) =>
     request<PollData>("/api/calls/features/poll/create", {
       method: "POST",
-      body: JSON.stringify({ call_id: callId, question, options }),
+      body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, question, options }),
     }),
-  votePoll: (callId: string, pollId: string, optionIndex: number) =>
+  votePoll: (callId: string, pollId: string, optionIndex: number, chatId?: string) =>
     request("/api/calls/features/poll/vote", {
       method: "POST",
-      body: JSON.stringify({ call_id: callId, poll_id: pollId, option_index: optionIndex }),
+      body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, poll_id: pollId, option_index: optionIndex }),
     }),
 
   // Speaking time & Engagement
@@ -738,20 +738,20 @@ export const callFeatures = {
     request<any>(`/api/calls/features/${callId}/engagement`),
 
   // Whiteboard / File share / In-call chat
-  whiteboard: (callId: string, action: string, data?: any) =>
+  whiteboard: (callId: string, action: string, data?: any, chatId?: string) =>
     request("/api/calls/features/whiteboard", {
       method: "POST",
-      body: JSON.stringify({ call_id: callId, action, data: data || {} }),
+      body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, action, data: data || {} }),
     }),
-  shareFile: (callId: string, fileName: string, fileUrl: string, fileSize: number) =>
+  shareFile: (callId: string, fileName: string, fileUrl: string, fileSize: number, chatId?: string) =>
     request("/api/calls/features/share-file", {
       method: "POST",
-      body: JSON.stringify({ call_id: callId, file_name: fileName, file_url: fileUrl, file_size: fileSize }),
+      body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, file_name: fileName, file_url: fileUrl, file_size: fileSize }),
     }),
-  sendInCallChat: (callId: string, message: string) =>
+  sendInCallChat: (callId: string, message: string, chatId?: string) =>
     request("/api/calls/features/in-call-chat", {
       method: "POST",
-      body: JSON.stringify({ call_id: callId, message }),
+      body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined, content: message }),
     }),
 
   // AI features
@@ -972,8 +972,8 @@ export const recording = {
 // ─── Whiteboard ────────────────────────────────────────────
 
 export const whiteboard = {
-  create: (callId: string) =>
-    request("/api/whiteboard/create", { method: "POST", body: JSON.stringify({ call_id: callId }) }),
+  create: (callId: string, chatId?: string) =>
+    request("/api/whiteboard/create", { method: "POST", body: JSON.stringify({ call_id: callId, chat_id: chatId || undefined }) }),
   get: (callId: string) =>
     request<any>(`/api/whiteboard/${callId}`),
   

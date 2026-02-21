@@ -31,22 +31,22 @@ class LockRequest(BaseModel):
 
 class ReactionRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     emoji: str
 
 class RaiseHandRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
 
 class PollCreateRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     question: str
     options: list[str]
 
 class PollVoteRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     poll_id: str
     option: str
 
@@ -56,20 +56,20 @@ class SpeakingRequest(BaseModel):
 
 class WhiteboardRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     action: str  # "draw", "clear", "undo"
     data: dict = {}
 
 class FileSendRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     file_name: str
     file_url: str
     file_size: int
 
 class InCallChatRequest(BaseModel):
     call_id: str
-    chat_id: str
+    chat_id: Optional[str] = None
     content: str
 
 class AIAssistantRequest(BaseModel):
@@ -149,15 +149,16 @@ async def verify_lock(req: LockRequest, current_user: User = Depends(get_current
 async def send_reaction(req: ReactionRequest, current_user: User = Depends(get_current_user)):
     reaction = await call_features.send_reaction(req.call_id, str(current_user.id), req.emoji)
     # Broadcast to all call participants via chat members
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "call_reaction",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-            "display_name": current_user.display_name,
-            "emoji": req.emoji,
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "call_reaction",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+                "display_name": current_user.display_name,
+                "emoji": req.emoji,
+            },
+        })
     return reaction
 
 
@@ -166,27 +167,29 @@ async def send_reaction(req: ReactionRequest, current_user: User = Depends(get_c
 @router.post("/raise-hand")
 async def raise_hand(req: RaiseHandRequest, current_user: User = Depends(get_current_user)):
     await call_features.raise_hand(req.call_id, str(current_user.id))
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "hand_raised",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-            "display_name": current_user.display_name,
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "hand_raised",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+                "display_name": current_user.display_name,
+            },
+        })
     return {"raised": True}
 
 
 @router.post("/lower-hand")
 async def lower_hand(req: RaiseHandRequest, current_user: User = Depends(get_current_user)):
     await call_features.lower_hand(req.call_id, str(current_user.id))
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "hand_lowered",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "hand_lowered",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+            },
+        })
     return {"raised": False}
 
 
@@ -195,23 +198,25 @@ async def lower_hand(req: RaiseHandRequest, current_user: User = Depends(get_cur
 @router.post("/poll/create")
 async def create_poll(req: PollCreateRequest, current_user: User = Depends(get_current_user)):
     poll = await call_features.create_poll(req.call_id, str(current_user.id), req.question, req.options)
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "poll_created",
-        "data": {
-            **poll,
-            "creator_name": current_user.display_name,
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "poll_created",
+            "data": {
+                **poll,
+                "creator_name": current_user.display_name,
+            },
+        })
     return poll
 
 
 @router.post("/poll/vote")
 async def vote_poll(req: PollVoteRequest, current_user: User = Depends(get_current_user)):
     poll = await call_features.vote_poll(req.call_id, req.poll_id, str(current_user.id), req.option)
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "poll_updated",
-        "data": poll,
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "poll_updated",
+            "data": poll,
+        })
     return poll
 
 
@@ -242,16 +247,17 @@ async def get_engagement(call_id: str, current_user: User = Depends(get_current_
 
 @router.post("/whiteboard")
 async def whiteboard_action(req: WhiteboardRequest, current_user: User = Depends(get_current_user)):
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "whiteboard_action",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-            "display_name": current_user.display_name,
-            "action": req.action,
-            "data": req.data,
-        },
-    }, exclude_user=str(current_user.id))
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "whiteboard_action",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+                "display_name": current_user.display_name,
+                "action": req.action,
+                "data": req.data,
+            },
+        }, exclude_user=str(current_user.id))
     return {"success": True}
 
 
@@ -259,17 +265,18 @@ async def whiteboard_action(req: WhiteboardRequest, current_user: User = Depends
 
 @router.post("/share-file")
 async def share_file(req: FileSendRequest, current_user: User = Depends(get_current_user)):
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "call_file_shared",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-            "display_name": current_user.display_name,
-            "file_name": req.file_name,
-            "file_url": req.file_url,
-            "file_size": req.file_size,
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "call_file_shared",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+                "display_name": current_user.display_name,
+                "file_name": req.file_name,
+                "file_url": req.file_url,
+                "file_size": req.file_size,
+            },
+        })
     return {"success": True}
 
 
@@ -277,15 +284,16 @@ async def share_file(req: FileSendRequest, current_user: User = Depends(get_curr
 
 @router.post("/in-call-chat")
 async def in_call_chat(req: InCallChatRequest, current_user: User = Depends(get_current_user)):
-    await manager.notify_chat_members(req.chat_id, {
-        "type": "in_call_message",
-        "data": {
-            "call_id": req.call_id,
-            "user_id": str(current_user.id),
-            "display_name": current_user.display_name,
-            "content": req.content,
-        },
-    })
+    if req.chat_id:
+        await manager.notify_chat_members(req.chat_id, {
+            "type": "in_call_message",
+            "data": {
+                "call_id": req.call_id,
+                "user_id": str(current_user.id),
+                "display_name": current_user.display_name,
+                "content": req.content,
+            },
+        })
     return {"success": True}
 
 

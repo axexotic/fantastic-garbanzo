@@ -29,8 +29,8 @@ class VideoQualityService:
             raise ValueError(f"Invalid profile: {profile}")
         
         key = f"call:{call_id}:user:{user_id}:video_profile"
-        await redis_service.redis.setex(
-            key, 3600, json.dumps({"profile": profile, **profiles[profile]})
+        await redis_service.set(
+            key, json.dumps({"profile": profile, **profiles[profile]}), 3600
         )
         return profiles[profile]
 
@@ -38,7 +38,7 @@ class VideoQualityService:
     async def get_video_profile(user_id: str, call_id: str) -> Dict:
         """Get user's current video quality settings."""
         key = f"call:{call_id}:user:{user_id}:video_profile"
-        data = await redis_service.redis.get(key)
+        data = await redis_service.get(key)
         if not data:
             return {
                 "profile": "medium",
@@ -65,7 +65,7 @@ class VideoQualityService:
             "can_upgrade": True,
         }
         
-        await redis_service.redis.setex(key, 60, json.dumps(recommendations))
+        await redis_service.set(key, json.dumps(recommendations), 60)
         return recommendations
 
     @staticmethod
@@ -82,8 +82,8 @@ class VideoQualityService:
             raise ValueError(f"Invalid codec: {codec}")
         
         key = f"call:{call_id}:video_codec"
-        await redis_service.redis.setex(
-            key, 3600, json.dumps({"codec": codec, **codecs_info[codec]})
+        await redis_service.set(
+            key, json.dumps({"codec": codec, **codecs_info[codec]}), 3600
         )
         return codecs_info[codec]
 
@@ -91,7 +91,7 @@ class VideoQualityService:
     async def get_call_video_settings(call_id: str) -> Dict:
         """Get all video settings for a call."""
         codec_key = f"call:{call_id}:video_codec"
-        codec_data = await redis_service.redis.get(codec_key)
+        codec_data = await redis_service.get(codec_key)
         
         return {
             "codec": json.loads(codec_data) if codec_data else {"codec": "vp8"},
@@ -113,7 +113,7 @@ class VideoQualityService:
             "camera_framerate": 15,
         }
         
-        await redis_service.redis.setex(key, 3600, json.dumps(opt_settings))
+        await redis_service.set(key, json.dumps(opt_settings), 3600)
         return opt_settings
 
     @staticmethod
@@ -136,5 +136,5 @@ class VideoQualityService:
     async def request_keyframe(call_id: str, user_id: str) -> Dict:
         """Request keyframe to recover from video corruption."""
         key = f"call:{call_id}:user:{user_id}:keyframe_request"
-        await redis_service.redis.setex(key, 10, "requested")
+        await redis_service.set(key, "requested", 10)
         return {"status": "keyframe_requested", "timestamp": int(__import__("time").time())}

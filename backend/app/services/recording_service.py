@@ -25,14 +25,14 @@ class RecordingService:
             "storage_provider": "s3",
         }
         
-        await redis_service.redis.setex(key, 86400, json.dumps(recording))
+        await redis_service.set(key, json.dumps(recording), 86400)
         return recording
 
     @staticmethod
     async def stop_recording(call_id: str) -> Dict:
         """Stop active recording."""
         key = f"call:{call_id}:recording"
-        data = await redis_service.redis.get(key)
+        data = await redis_service.get(key)
         
         if not data:
             return {"status": "not_recording"}
@@ -43,10 +43,10 @@ class RecordingService:
         recording["duration_seconds"] = 1800  # Placeholder
         
         # Move to completed
-        await redis_service.redis.setex(
-            f"call:{call_id}:recording:completed", 604800, json.dumps(recording)
+        await redis_service.set(
+            f"call:{call_id}:recording:completed", json.dumps(recording), 604800
         )
-        await redis_service.redis.delete(key)
+        await redis_service.delete(key)
         
         return recording
 
@@ -54,7 +54,7 @@ class RecordingService:
     async def get_recording_status(call_id: str) -> Dict:
         """Get current recording status."""
         key = f"call:{call_id}:recording"
-        data = await redis_service.redis.get(key)
+        data = await redis_service.get(key)
         
         if not data:
             return {"status": "not_recording", "call_id": call_id}
@@ -65,7 +65,7 @@ class RecordingService:
     async def pause_recording(call_id: str) -> Dict:
         """Pause recording (but keep file open)."""
         key = f"call:{call_id}:recording"
-        data = await redis_service.redis.get(key)
+        data = await redis_service.get(key)
         
         if not data:
             return {"status": "error", "message": "No active recording"}
@@ -74,14 +74,14 @@ class RecordingService:
         recording["status"] = "paused"
         recording["paused_at"] = datetime.utcnow().isoformat()
         
-        await redis_service.redis.setex(key, 86400, json.dumps(recording))
+        await redis_service.set(key, json.dumps(recording), 86400)
         return recording
 
     @staticmethod
     async def resume_recording(call_id: str) -> Dict:
         """Resume paused recording."""
         key = f"call:{call_id}:recording"
-        data = await redis_service.redis.get(key)
+        data = await redis_service.get(key)
         
         if not data:
             return {"status": "error", "message": "No recording to resume"}
@@ -91,7 +91,7 @@ class RecordingService:
         if "paused_at" in recording:
             del recording["paused_at"]
         
-        await redis_service.redis.setex(key, 86400, json.dumps(recording))
+        await redis_service.set(key, json.dumps(recording), 86400)
         return recording
 
     @staticmethod
@@ -118,7 +118,7 @@ class RecordingService:
     async def delete_recording(call_id: str) -> Dict:
         """Delete a recording."""
         key = f"call:{call_id}:recording:completed"
-        await redis_service.redis.delete(key)
+        await redis_service.delete(key)
         return {"status": "deleted", "call_id": call_id}
 
     @staticmethod
@@ -164,7 +164,7 @@ class RecordingService:
             "estimated_completion_seconds": 600,
         }
         
-        await redis_service.redis.setex(key, 86400, json.dumps(transcription))
+        await redis_service.set(key, json.dumps(transcription), 86400)
         return transcription
 
     @staticmethod

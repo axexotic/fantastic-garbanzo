@@ -39,7 +39,7 @@ export function IncomingCallModal({ call, onDismiss }: IncomingCallModalProps) {
       setIncomingCall(null);
       // Navigate to call page
       router.push(
-        `/call/${call.room_name}?callId=${call.call_id}&type=${call.call_type}`
+        `/call/${call.room_name}?callId=${call.call_id}&type=${call.call_type}&chatId=${call.chat_id}`
       );
     } catch (err: any) {
       console.error("Failed to join call:", err);
