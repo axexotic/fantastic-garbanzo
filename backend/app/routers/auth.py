@@ -86,7 +86,9 @@ class UpdateProfileRequest(BaseModel):
 # ─── Cookie Helpers ─────────────────────────────────────────
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
-    """Set HTTP-only secure cookies for both tokens."""
+    """Set HTTP-only secure cookies for both tokens + CSRF cookie."""
+    import secrets
+
     settings = get_settings()
     is_prod = not settings.debug
 
@@ -108,6 +110,20 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         max_age=7 * 24 * 60 * 60,  # 7 days
         path="/api/auth",  # Only sent to auth endpoints
     )
+
+    # Ensure CSRF cookie exists with correct domain so frontend JS can read it
+    csrf_kwargs: dict = dict(
+        key="csrf_token",
+        value=secrets.token_hex(32),
+        httponly=False,
+        secure=is_prod,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
+        path="/",
+    )
+    if settings.cookie_domain:
+        csrf_kwargs["domain"] = settings.cookie_domain
+    response.set_cookie(**csrf_kwargs)
 
 
 def _clear_auth_cookies(response: Response) -> None:

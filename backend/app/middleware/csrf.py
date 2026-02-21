@@ -11,6 +11,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from app.config import get_settings
+
 # Safe methods that don't need CSRF protection
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
@@ -37,7 +39,12 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Skip non-API routes and exempt paths
         path = request.url.path
         if not path.startswith("/api") or path in CSRF_EXEMPT_PATHS:
-            return await call_next(request)
+            response = await call_next(request)
+            # Still ensure CSRF cookie on exempt GET responses so it's
+            # available immediately (e.g. after login/signup).
+            if request.method in SAFE_METHODS:
+                self._ensure_csrf_cookie(request, response)
+            return response
 
         # Skip safe methods
         if request.method in SAFE_METHODS:
@@ -70,13 +77,20 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     def _ensure_csrf_cookie(request: Request, response: Response) -> None:
         """Set a CSRF cookie if one doesn't exist yet."""
         if "csrf_token" not in request.cookies:
+            settings = get_settings()
             token = secrets.token_hex(32)
-            response.set_cookie(
+            kwargs: dict = dict(
                 key="csrf_token",
                 value=token,
                 httponly=False,  # JS must be able to read this
-                secure=True,
+                secure=not settings.debug,
                 samesite="lax",
                 max_age=7 * 24 * 60 * 60,
                 path="/",
             )
+            # In production, set domain so frontend JS on a different
+            # subdomain (e.g. flaskai.xyz) can read the cookie set by
+            # api.flaskai.xyz.
+            if settings.cookie_domain:
+                kwargs["domain"] = settings.cookie_domain
+            response.set_cookie(**kwargs)

@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     credit_cost_pipeline: int = 4   # per audio chunk (STT+translate+TTS)
     credit_cost_voice_clone: int = 50  # per voice clone
 
+    # Cookies
+    cookie_domain: str = ""  # e.g. ".flaskai.xyz" in prod so JS on frontend can read CSRF cookie
+
     # Monitoring
     sentry_dsn: str = ""
 
