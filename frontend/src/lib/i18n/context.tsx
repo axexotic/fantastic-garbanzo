@@ -12,7 +12,7 @@ import type { Translations, Language } from "./types";
 import { LANGUAGES, DEFAULT_LOCALE, getLanguage } from "./languages";
 
 /* ─── Locale loaders (dynamic import for code-splitting) ──── */
-const LOCALE_LOADERS: Record<string, () => Promise<{ default: Translations }>> = {
+const LOCALE_LOADERS: Record<string, () => Promise<{ default: Partial<Translations> }>> = {
   en: () => import("./locales/en"),
   th: () => import("./locales/th"),
   es: () => import("./locales/es"),
