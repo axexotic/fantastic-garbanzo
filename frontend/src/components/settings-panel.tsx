@@ -1198,9 +1198,9 @@ export function SettingsPanel() {
                 <Select
                   value={prefs.show_last_seen}
                   options={[
-                    { value: "everyone", label: "Everyone" },
-                    { value: "contacts", label: "Contacts" },
-                    { value: "nobody", label: "Nobody" },
+                    { value: "everyone", label: t("privacy.everyone") },
+                    { value: "contacts", label: t("privacy.contacts") },
+                    { value: "nobody", label: t("privacy.nobody") },
                   ]}
                   onChange={(v) => updatePref("show_last_seen", v)}
                 />
@@ -1212,9 +1212,9 @@ export function SettingsPanel() {
                 <Select
                   value={prefs.show_profile_photo}
                   options={[
-                    { value: "everyone", label: "Everyone" },
-                    { value: "contacts", label: "Contacts" },
-                    { value: "nobody", label: "Nobody" },
+                    { value: "everyone", label: t("privacy.everyone") },
+                    { value: "contacts", label: t("privacy.contacts") },
+                    { value: "nobody", label: t("privacy.nobody") },
                   ]}
                   onChange={(v) => updatePref("show_profile_photo", v)}
                 />
@@ -1285,27 +1285,27 @@ export function SettingsPanel() {
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("chat.appearance")}
+                {t("chatSettings.appearance")}
               </p>
-              <SettingRow label={t("chat.fontSize")}>
+              <SettingRow label={t("chatSettings.fontSize")}>
                 <Select
                   value={prefs.chat_font_size}
                   options={[
-                    { value: "small", label: "Small" },
-                    { value: "medium", label: "Medium" },
-                    { value: "large", label: "Large" },
+                    { value: "small", label: t("chatSettings.small") },
+                    { value: "medium", label: t("chatSettings.medium") },
+                    { value: "large", label: t("chatSettings.large") },
                   ]}
                   onChange={(v) => updatePref("chat_font_size", v)}
                 />
               </SettingRow>
-              <SettingRow label={t("chat.wallpaper")}>
+              <SettingRow label={t("chatSettings.wallpaper")}>
                 <Select
                   value={prefs.chat_wallpaper}
                   options={[
-                    { value: "default", label: "Default" },
-                    { value: "dark", label: "Dark" },
-                    { value: "gradient", label: "Gradient" },
-                    { value: "minimal", label: "Minimal" },
+                    { value: "default", label: t("chatSettings.default") },
+                    { value: "dark", label: t("chatSettings.dark") },
+                    { value: "gradient", label: t("chatSettings.gradient") },
+                    { value: "minimal", label: t("chatSettings.minimal") },
                   ]}
                   onChange={(v) => updatePref("chat_wallpaper", v)}
                 />
@@ -1314,11 +1314,11 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("chat.behavior")}
+                {t("chatSettings.behavior")}
               </p>
               <SettingRow
-                label={t("chat.groupMessages")}
-                sublabel={t("chat.groupMessagesDesc")}
+                label={t("chatSettings.groupMessages")}
+                sublabel={t("chatSettings.groupMessagesDesc")}
               >
                 <Toggle
                   checked={prefs.message_grouping}
@@ -1326,8 +1326,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label={t("chat.sendWithEnter")}
-                sublabel={t("chat.sendWithEnterDesc")}
+                label={t("chatSettings.sendWithEnter")}
+                sublabel={t("chatSettings.sendWithEnterDesc")}
               >
                 <Toggle
                   checked={prefs.send_with_enter}
@@ -1335,8 +1335,8 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               <SettingRow
-                label={t("chat.autoTranslate")}
-                sublabel={t("chat.autoTranslateDesc")}
+                label={t("chatSettings.autoTranslate")}
+                sublabel={t("chatSettings.autoTranslateDesc")}
               >
                 <Toggle
                   checked={prefs.auto_translate_messages}
@@ -1347,7 +1347,7 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            {t("chat.couldNotLoad")}
+            {t("chatSettings.couldNotLoad")}
           </p>
         )}
       </div>
