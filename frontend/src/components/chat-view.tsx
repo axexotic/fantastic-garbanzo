@@ -110,7 +110,7 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
       .getMessages(chatId)
       .then((msgs) => {
         if (active) {
-          setMessages(msgs.reverse()); // API returns newest-first
+          setMessages(msgs); // API returns oldest-first (chronological)
           setLoading(false);
           setTimeout(scrollToBottom, 100);
         }
@@ -150,7 +150,11 @@ export function ChatView({ chatId, currentUser, socket }: ChatViewProps) {
           is_edited: false,
           created_at: data.created_at || new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          // Deduplicate — prevent duplicate if same message arrives twice
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
         // Auto-scroll if near bottom
         if (containerRef.current) {
           const { scrollTop, scrollHeight, clientHeight } =

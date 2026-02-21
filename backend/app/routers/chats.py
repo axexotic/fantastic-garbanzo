@@ -386,6 +386,28 @@ async def send_message(
     await db.commit()
     await db.refresh(message)
 
+    # Broadcast to all chat members via WebSocket (personalized translation)
+    for member in chat.members:
+        member_lang = member.language
+        msg_data = {
+            "id": str(message.id),
+            "chat_id": str(chat.id),
+            "sender_id": str(current_user.id),
+            "sender_username": current_user.username,
+            "sender_display_name": current_user.display_name,
+            "content": body.content,
+            "translated_content": translations.get(member_lang, body.content),
+            "source_language": source_lang,
+            "translations": translations,
+            "message_type": body.message_type,
+            "reply_to_id": str(body.reply_to_id) if body.reply_to_id else None,
+            "created_at": message.created_at.isoformat(),
+        }
+        await manager.send_to_user(
+            str(member.user_id),
+            {"type": "new_message", "data": msg_data},
+        )
+
     return format_message(message, source_lang)
 
 
