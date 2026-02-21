@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -48,7 +48,7 @@ import {
 import { VoiceRecorder } from "./voice-recorder";
 import { useTranslation, LANGUAGES as I18N_LANGUAGES, SUPPORTED_LOCALES } from "@/lib/i18n";
 
-// ─── Types ─────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type SettingsSection =
   | "menu"
@@ -63,47 +63,47 @@ type SettingsSection =
   | "payments";
 
 const LANGUAGES = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "th", label: "Thai", flag: "🇹🇭" },
-  { code: "es", label: "Spanish", flag: "🇪🇸" },
-  { code: "fr", label: "French", flag: "🇫🇷" },
-  { code: "de", label: "German", flag: "🇩🇪" },
-  { code: "ja", label: "Japanese", flag: "🇯🇵" },
-  { code: "ko", label: "Korean", flag: "🇰🇷" },
-  { code: "zh", label: "Chinese", flag: "🇨🇳" },
-  { code: "ar", label: "Arabic", flag: "🇸🇦" },
-  { code: "pt", label: "Portuguese", flag: "🇧🇷" },
-  { code: "ru", label: "Russian", flag: "🇷🇺" },
-  { code: "hi", label: "Hindi", flag: "🇮🇳" },
-  { code: "vi", label: "Vietnamese", flag: "🇻🇳" },
-  { code: "id", label: "Indonesian", flag: "🇮🇩" },
-  { code: "tr", label: "Turkish", flag: "🇹🇷" },
-  { code: "it", label: "Italian", flag: "🇮🇹" },
+  { code: "en", label: "English", flag: "ðŸ‡¬ðŸ‡§" },
+  { code: "th", label: "Thai", flag: "ðŸ‡¹ðŸ‡­" },
+  { code: "es", label: "Spanish", flag: "ðŸ‡ªðŸ‡¸" },
+  { code: "fr", label: "French", flag: "ðŸ‡«ðŸ‡·" },
+  { code: "de", label: "German", flag: "ðŸ‡©ðŸ‡ª" },
+  { code: "ja", label: "Japanese", flag: "ðŸ‡¯ðŸ‡µ" },
+  { code: "ko", label: "Korean", flag: "ðŸ‡°ðŸ‡·" },
+  { code: "zh", label: "Chinese", flag: "ðŸ‡¨ðŸ‡³" },
+  { code: "ar", label: "Arabic", flag: "ðŸ‡¸ðŸ‡¦" },
+  { code: "pt", label: "Portuguese", flag: "ðŸ‡§ðŸ‡·" },
+  { code: "ru", label: "Russian", flag: "ðŸ‡·ðŸ‡º" },
+  { code: "hi", label: "Hindi", flag: "ðŸ‡®ðŸ‡³" },
+  { code: "vi", label: "Vietnamese", flag: "ðŸ‡»ðŸ‡³" },
+  { code: "id", label: "Indonesian", flag: "ðŸ‡®ðŸ‡©" },
+  { code: "tr", label: "Turkish", flag: "ðŸ‡¹ðŸ‡·" },
+  { code: "it", label: "Italian", flag: "ðŸ‡®ðŸ‡¹" },
 ];
 
 const RINGTONE_OPTIONS = [
-  { value: "default", label: "Default", emoji: "🔔" },
-  { value: "classic", label: "Classic", emoji: "📞" },
-  { value: "digital", label: "Digital", emoji: "💫" },
-  { value: "melody", label: "Melody", emoji: "🎵" },
-  { value: "urgent", label: "Urgent", emoji: "🚨" },
-  { value: "gentle", label: "Gentle", emoji: "🌸" },
-  { value: "retro", label: "Retro", emoji: "📟" },
-  { value: "silent", label: "Silent", emoji: "🔇" },
+  { value: "default", label: "Default", emoji: "ðŸ””" },
+  { value: "classic", label: "Classic", emoji: "ðŸ“ž" },
+  { value: "digital", label: "Digital", emoji: "ðŸ’«" },
+  { value: "melody", label: "Melody", emoji: "ðŸŽµ" },
+  { value: "urgent", label: "Urgent", emoji: "ðŸš¨" },
+  { value: "gentle", label: "Gentle", emoji: "ðŸŒ¸" },
+  { value: "retro", label: "Retro", emoji: "ðŸ“Ÿ" },
+  { value: "silent", label: "Silent", emoji: "ðŸ”‡" },
 ];
 
 const NOTIFICATION_TONE_OPTIONS = [
-  { value: "default", label: "Default", emoji: "🔔" },
-  { value: "chime", label: "Chime", emoji: "🎐" },
-  { value: "ding", label: "Ding", emoji: "🛎️" },
-  { value: "pop", label: "Pop", emoji: "💬" },
-  { value: "drop", label: "Drop", emoji: "💧" },
-  { value: "bubble", label: "Bubble", emoji: "🫧" },
-  { value: "chirp", label: "Chirp", emoji: "🐦" },
-  { value: "silent", label: "Silent", emoji: "🔇" },
+  { value: "default", label: "Default", emoji: "ðŸ””" },
+  { value: "chime", label: "Chime", emoji: "ðŸŽ" },
+  { value: "ding", label: "Ding", emoji: "ðŸ›Žï¸" },
+  { value: "pop", label: "Pop", emoji: "ðŸ’¬" },
+  { value: "drop", label: "Drop", emoji: "ðŸ’§" },
+  { value: "bubble", label: "Bubble", emoji: "ðŸ«§" },
+  { value: "chirp", label: "Chirp", emoji: "ðŸ¦" },
+  { value: "silent", label: "Silent", emoji: "ðŸ”‡" },
 ];
 
-// ─── Toggle Component ──────────────────────────────────────
+// â”€â”€â”€ Toggle Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Toggle({
   checked,
@@ -134,7 +134,7 @@ function Toggle({
   );
 }
 
-// ─── Select Component ──────────────────────────────────────
+// â”€â”€â”€ Select Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Select({
   value,
@@ -160,7 +160,7 @@ function Select({
   );
 }
 
-// ─── Tone Select (with emoji) ──────────────────────────────
+// â”€â”€â”€ Tone Select (with emoji) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ToneSelect({
   value,
@@ -190,7 +190,7 @@ function ToneSelect({
   );
 }
 
-// ─── Menu Item ─────────────────────────────────────────────
+// â”€â”€â”€ Menu Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function MenuItem({
   icon: Icon,
@@ -228,7 +228,7 @@ function MenuItem({
   );
 }
 
-// ─── Section Header ────────────────────────────────────────
+// â”€â”€â”€ Section Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionHeader({
   title,
@@ -250,7 +250,7 @@ function SectionHeader({
   );
 }
 
-// ─── Setting Row ───────────────────────────────────────────
+// â”€â”€â”€ Setting Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SettingRow({
   label,
@@ -274,9 +274,9 @@ function SettingRow({
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export function SettingsPanel() {
   const { user, updateUser } = useAuthStore();
@@ -334,7 +334,7 @@ export function SettingsPanel() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  // ─── Load Data ─────────────────────────────────────────
+  // â”€â”€â”€ Load Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   useEffect(() => {
     const load = async () => {
@@ -408,7 +408,7 @@ export function SettingsPanel() {
         setAudioOutputs(devices.filter((d) => d.kind === "audiooutput"));
         setVideoInputs(devices.filter((d) => d.kind === "videoinput"));
       } catch {
-        // Permission denied — still try enumeration
+        // Permission denied â€” still try enumeration
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           setAudioInputs(devices.filter((d) => d.kind === "audioinput"));
@@ -420,7 +420,7 @@ export function SettingsPanel() {
     enumerate();
   }, [section]);
 
-  // ─── Handlers ──────────────────────────────────────────
+  // â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -561,9 +561,9 @@ export function SettingsPanel() {
     .slice(0, 2)
     .toUpperCase();
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // MAIN MENU
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "menu") {
     return (
@@ -681,7 +681,7 @@ export function SettingsPanel() {
             iconColor="bg-emerald-500/10 text-emerald-500"
           />
 
-          {/* ─── App Language ─── */}
+          {/* â”€â”€â”€ App Language â”€â”€â”€ */}
           <div className="mt-4 border-t border-border pt-4 px-3">
             <div className="mb-2">
               <div className="text-sm font-medium">{t("settings.appLanguage")}</div>
@@ -729,9 +729,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // MY ACCOUNT
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "account") {
     return (
@@ -863,7 +863,7 @@ export function SettingsPanel() {
 
           {loadingVoice ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
             </div>
           ) : showVoiceRecorder ? (
             <div className="rounded-xl border border-border bg-secondary/20 p-3">
@@ -1028,9 +1028,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // NOTIFICATIONS & SOUNDS
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "notifications") {
     return (
@@ -1039,7 +1039,7 @@ export function SettingsPanel() {
 
         {loadingNotif ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : notifPrefs ? (
           <div className="divide-y divide-border">
@@ -1175,9 +1175,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // PRIVACY & SECURITY
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "privacy") {
     return (
@@ -1186,7 +1186,7 @@ export function SettingsPanel() {
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : prefs ? (
           <div className="divide-y divide-border">
@@ -1268,9 +1268,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // CHAT SETTINGS
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "chat") {
     return (
@@ -1279,7 +1279,7 @@ export function SettingsPanel() {
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : prefs ? (
           <div className="divide-y divide-border">
@@ -1354,9 +1354,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // FOLDERS
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "folders") {
     return (
@@ -1364,9 +1364,9 @@ export function SettingsPanel() {
         <SectionHeader title={t("settings.folders")} onBack={goBack} />
         <div className="px-4 py-8 text-center">
           <Folder className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-          <h4 className="text-sm font-semibold">{t("folders.chatFolders")}</h4>
+          <h4 className="text-sm font-semibold">{t("folders.title")}</h4>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("folders.chatFoldersDesc")}
+            {t("folders.desc")}
           </p>
           <div className="mt-4 space-y-2">
             {["All Chats", "Personal", "Groups"].map((folder) => (
@@ -1387,9 +1387,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // ADVANCED
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "advanced") {
     return (
@@ -1398,17 +1398,17 @@ export function SettingsPanel() {
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : prefs ? (
           <div className="divide-y divide-border">
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("advanced.dataStorage")}
+                {t("adv.dataAndStorage")}
               </p>
               <SettingRow
-                label={t("advanced.autoDownload")}
-                sublabel={t("advanced.autoDownloadDesc")}
+                label={t("adv.autoDownload")}
+                sublabel={t("adv.autoDownloadDesc")}
               >
                 <Toggle
                   checked={prefs.auto_download_media}
@@ -1416,7 +1416,7 @@ export function SettingsPanel() {
                 />
               </SettingRow>
               {prefs.auto_download_media && (
-                <SettingRow label={t("advanced.maxFileSize")}>
+                <SettingRow label={t("adv.maxFileSize")}>
                   <Select
                     value={String(prefs.auto_download_max_size_mb)}
                     options={[
@@ -1433,8 +1433,8 @@ export function SettingsPanel() {
                 </SettingRow>
               )}
               <SettingRow
-                label={t("advanced.dataSaver")}
-                sublabel={t("advanced.dataSaverDesc")}
+                label={t("adv.dataSaver")}
+                sublabel={t("adv.dataSaverDesc")}
               >
                 <Toggle
                   checked={prefs.data_saver_mode}
@@ -1445,9 +1445,9 @@ export function SettingsPanel() {
 
             <div className="px-1 py-2">
               <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("advanced.connection")}
+                {t("adv.connection")}
               </p>
-              <SettingRow label={t("advanced.useProxy")} sublabel={t("advanced.useProxyDesc")}>
+              <SettingRow label={t("adv.useProxy")} sublabel={t("adv.useProxyDesc")}>
                 <Toggle
                   checked={prefs.proxy_enabled}
                   onChange={(v) => updatePref("proxy_enabled", v)}
@@ -1457,16 +1457,16 @@ export function SettingsPanel() {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-xs text-muted-foreground">
-            {t("advanced.couldNotLoad")}
+            {t("adv.couldNotLoad")}
           </p>
         )}
       </div>
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SPEAKERS & CAMERA
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "devices") {
     return (
@@ -1585,9 +1585,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // BATTERY & ANIMATIONS
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "battery") {
     return (
@@ -1596,7 +1596,7 @@ export function SettingsPanel() {
 
         {loadingPrefs ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
           </div>
         ) : prefs ? (
           <div className="divide-y divide-border">
@@ -1648,9 +1648,9 @@ export function SettingsPanel() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // PAYMENTS & CREDITS
-  // ═══════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   if (section === "payments") {
     return (
@@ -1658,31 +1658,31 @@ export function SettingsPanel() {
         <SectionHeader title={t("settings.paymentsAndCredits")} onBack={goBack} />
 
         <div className="p-4 space-y-4">
-          {/* Chat Plan — $15 Lifetime */}
+          {/* Chat Plan â€” $15 Lifetime */}
           <div className="rounded-xl border border-border bg-card p-4">
             <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <MessageCircle className="h-3.5 w-3.5" /> {t("payments.chatPlan")}
+              <MessageCircle className="h-3.5 w-3.5" /> {t("pay.chatPlan")}
             </h4>
             {loadingPayments ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+                <Loader2 className="h-3 w-3 animate-spin" /> {t("common.loading")}
               </div>
             ) : balanceInfo?.chat_plan_purchased ? (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 <div>
                   <div className="text-xs font-semibold text-emerald-500">
-                    {t("payments.lifetimeChatActive")}
+                    {t("pay.lifetimeChatActive")}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {t("payments.unlimitedMessaging")}
+                    {t("pay.unlimitedMessaging")}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  {t("payments.oneTimePurchase")}
+                  {t("pay.chatPlanDesc")}
                 </p>
                 <button
                   disabled={buyingChatPlan}
@@ -1701,10 +1701,10 @@ export function SettingsPanel() {
                 >
                   {buyingChatPlan ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Processing...
+                      <Loader2 className="h-4 w-4 animate-spin" /> {t("pay.processing")}
                     </span>
                   ) : (
-                    t("payments.buyLifetimeChat")
+                    t("pay.buyLifetimeChat")
                   )}
                 </button>
               </div>
@@ -1714,11 +1714,11 @@ export function SettingsPanel() {
           {/* Voice/Video Credits */}
           <div className="rounded-xl border border-border bg-card p-4">
             <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Phone className="h-3.5 w-3.5" /> {t("payments.voiceVideoCredits")}
+              <Phone className="h-3.5 w-3.5" /> {t("pay.voiceVideoCredits")}
             </h4>
             {loadingPayments ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+                <Loader2 className="h-3 w-3 animate-spin" /> {t("common.loading")}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1726,7 +1726,7 @@ export function SettingsPanel() {
                 <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3">
                   <div>
                     <div className="text-xs text-muted-foreground">
-                      {t("payments.voiceCredits")}
+                      {t("pay.voiceCredits")}
                     </div>
                     <div className="text-xl font-bold text-emerald-500">
                       {balanceInfo?.balance_display || "$0.00"}
@@ -1739,7 +1739,7 @@ export function SettingsPanel() {
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-lg bg-secondary/30 px-2 py-1.5">
                     <div className="text-xs text-muted-foreground">
-                      {t("payments.purchased")}
+                      {t("pay.purchased")}
                     </div>
                     <div className="text-sm font-semibold">
                       $
@@ -1749,7 +1749,7 @@ export function SettingsPanel() {
                     </div>
                   </div>
                   <div className="rounded-lg bg-secondary/30 px-2 py-1.5">
-                    <div className="text-xs text-muted-foreground">{t("payments.used")}</div>
+                    <div className="text-xs text-muted-foreground">{t("pay.used")}</div>
                     <div className="text-sm font-semibold">
                       $
                       {((balanceInfo?.total_used_cents || 0) / 100).toFixed(2)}
@@ -1760,7 +1760,7 @@ export function SettingsPanel() {
                 {/* Buy */}
                 <div>
                   <label className="mb-1.5 block text-xs text-muted-foreground">
-                    {t("payments.topUp")}
+                    {t("pay.topUp")}
                   </label>
                   <div className="grid grid-cols-3 gap-1.5 mb-2">
                     {[100, 500, 1000, 2500, 5000, 10000].map((cents) => (
@@ -1796,12 +1796,12 @@ export function SettingsPanel() {
                     {buyingCredits ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />{" "}
-                        Processing...
+                        {t("pay.processing")}
                       </span>
                     ) : (
-                      `Buy $${(selectedAmount / 100).toFixed(
+                      `${t("pay.buyCredits")} $${(selectedAmount / 100).toFixed(
                         selectedAmount >= 100 ? 0 : 2
-                      )} Credits`
+                      )}`
                     )}
                   </button>
                 </div>
@@ -1820,7 +1820,7 @@ export function SettingsPanel() {
                   className="flex w-full items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
                   <History className="h-3 w-3" />
-                  {showTransactions ? "Hide" : "Show"} History
+                  {showTransactions ? t("pay.hideHistory") : t("pay.showHistory")}
                 </button>
 
                 {showTransactions && transactions.length > 0 && (
@@ -1856,7 +1856,7 @@ export function SettingsPanel() {
                 )}
                 {showTransactions && transactions.length === 0 && (
                   <p className="text-center text-xs text-muted-foreground">
-                    No transactions yet
+                    {t("pay.noTransactions")}
                   </p>
                 )}
               </div>
