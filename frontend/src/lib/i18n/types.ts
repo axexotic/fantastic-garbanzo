@@ -64,6 +64,11 @@ export interface Translations {
   "auth.termsOfService": string;
   "auth.privacyPolicy": string;
   "auth.and": string;
+  "auth.langPickerHint": string;
+  "auth.searchLanguage": string;
+  "auth.showAllLanguages": string;
+  "auth.showLess": string;
+  "auth.changeLanguage": string;
 
   // ── Forgot / Reset Password ──
   "auth.resetPassword": string;

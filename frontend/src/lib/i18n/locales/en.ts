@@ -63,6 +63,11 @@ const en: Translations = {
   "auth.termsOfService": "Terms of Service",
   "auth.privacyPolicy": "Privacy Policy",
   "auth.and": "and",
+  "auth.langPickerHint": "Choose your language — the entire app will switch instantly",
+  "auth.searchLanguage": "Search languages...",
+  "auth.showAllLanguages": "Show all {count} languages",
+  "auth.showLess": "Show less",
+  "auth.changeLanguage": "Change language",
 
   // ── Forgot / Reset Password ──
   "auth.resetPassword": "Reset Password",

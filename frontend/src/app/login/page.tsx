@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Globe } from "lucide-react";
+import { Globe, ChevronDown } from "lucide-react";
 import { auth } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, LANGUAGES } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,7 +15,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { t } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
+
+  /* ── Language quick-switch dropdown ──────────────────── */
+  const [langOpen, setLangOpen] = useState(false);
+  const [langSearch, setLangSearch] = useState("");
+  const langRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectedLang = LANGUAGES.find((l) => l.code === locale);
+  const filteredLangs = langSearch
+    ? LANGUAGES.filter(
+        (l) =>
+          l.name.toLowerCase().includes(langSearch.toLowerCase()) ||
+          l.nameEn.toLowerCase().includes(langSearch.toLowerCase())
+      )
+    : LANGUAGES;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +80,54 @@ export default function LoginPage() {
             <span className="text-2xl font-bold">VoiceTranslate</span>
           </Link>
           <p className="mt-2 text-muted-foreground">{t("auth.welcomeBack")}</p>
+
+          {/* Language quick-switch */}
+          <div className="mt-3 flex justify-center" ref={langRef}>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setLangOpen(!langOpen)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs hover:bg-secondary/50 transition-colors"
+              >
+                <span>{selectedLang?.flag}</span>
+                <span>{selectedLang?.name}</span>
+                <ChevronDown className={`h-3 w-3 transition-transform ${langOpen ? "rotate-180" : ""}`} />
+              </button>
+              {langOpen && (
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-72 rounded-xl border border-border bg-card shadow-lg z-50 p-2">
+                  <input
+                    type="text"
+                    value={langSearch}
+                    onChange={(e) => setLangSearch(e.target.value)}
+                    placeholder={t("auth.searchLanguage")}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
+                    {filteredLangs.map((lang) => (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => {
+                          setLocale(lang.code);
+                          setLangOpen(false);
+                          setLangSearch("");
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                          locale === lang.code
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-secondary/50"
+                        }`}
+                      >
+                        <span>{lang.flag}</span>
+                        <span className="truncate">{lang.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
