@@ -14,6 +14,7 @@ from app.dependencies import get_current_user
 from app.models.database import get_db
 from app.models.models import Call, CallParticipant, Chat, ChatMember, User
 from app.services.livekit_service import livekit_service
+from app.services.credit_service import credit_service
 from app.routers.websocket import (
     notify_incoming_call,
     notify_call_ended,
@@ -241,6 +242,30 @@ async def end_call(
 
     await db.commit()
 
+    # Deduct credits from all participants who joined
+    duration_secs = call.duration_seconds or 0
+    if duration_secs > 0:
+        participants_result = await db.execute(
+            select(CallParticipant).where(
+                CallParticipant.call_id == call.id,
+                CallParticipant.status.in_(["joined", "left"]),
+            )
+        )
+        for p in participants_result.scalars().all():
+            # Per-participant duration: use their own join/leave or call duration
+            p_duration = duration_secs
+            if p.joined_at and p.left_at:
+                p_duration = (p.left_at - p.joined_at).total_seconds()
+            elif p.joined_at:
+                p_duration = (call.ended_at - p.joined_at).total_seconds()
+            await credit_service.deduct_call(
+                user_id=p.user_id,
+                db=db,
+                duration_seconds=max(0, p_duration),
+                call_id=str(call.id),
+                call_type=call.call_type or "voice",
+            )
+
     # Notify all members that the call ended
     await notify_call_ended(
         chat_id=str(call.chat_id),
@@ -299,6 +324,29 @@ async def leave_call(
         call.status = "completed"
         call.ended_at = datetime.utcnow()
         await db.commit()
+
+        # Deduct credits from all participants
+        duration_secs = call.duration_seconds or 0
+        if duration_secs > 0:
+            all_parts = await db.execute(
+                select(CallParticipant).where(
+                    CallParticipant.call_id == call.id,
+                    CallParticipant.status.in_(["joined", "left"]),
+                )
+            )
+            for p in all_parts.scalars().all():
+                p_duration = duration_secs
+                if p.joined_at and p.left_at:
+                    p_duration = (p.left_at - p.joined_at).total_seconds()
+                elif p.joined_at:
+                    p_duration = (call.ended_at - p.joined_at).total_seconds()
+                await credit_service.deduct_call(
+                    user_id=p.user_id,
+                    db=db,
+                    duration_seconds=max(0, p_duration),
+                    call_id=str(call.id),
+                    call_type=call.call_type or "voice",
+                )
 
         await notify_call_ended(
             chat_id=str(call.chat_id),

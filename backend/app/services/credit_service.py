@@ -20,6 +20,7 @@ COST_TRANSLATION_PER_REQUEST = 1  # ~$0.01 per translation chunk (GPT-4/Claude)
 COST_TTS_PER_REQUEST = 2  # ~$0.02 per TTS synthesis (ElevenLabs)
 COST_VOICE_CLONE = 50  # $0.50 one-time voice clone
 COST_PIPELINE_PER_CHUNK = 4  # combined STT+translate+TTS for one audio chunk
+COST_CALL_PER_MINUTE = 2  # ~$0.02 per minute of voice/video call
 
 # Minimum balance required to start a pipeline operation
 MIN_BALANCE_CENTS = 1  # $0.01 — effectively "any credits at all"
@@ -117,6 +118,31 @@ class CreditService:
             amount_cents=COST_VOICE_CLONE,
             transaction_type="voice_clone",
             description="Voice profile cloning",
+        )
+
+    async def deduct_call(
+        self,
+        user_id,
+        db: AsyncSession,
+        duration_seconds: float,
+        call_id: str = "",
+        call_type: str = "voice",
+    ) -> bool:
+        """
+        Deduct credits for a call based on duration.
+        Charges per minute (rounded up), minimum 1 minute.
+        Returns True if successful, False if insufficient balance.
+        """
+        import math
+        minutes = max(1, math.ceil(duration_seconds / 60))
+        amount_cents = minutes * COST_CALL_PER_MINUTE
+        return await self.deduct(
+            user_id=user_id,
+            db=db,
+            amount_cents=amount_cents,
+            transaction_type="call",
+            description=f"{call_type.title()} call — {minutes} min",
+            metadata={"call_id": call_id, "call_type": call_type, "duration_seconds": duration_seconds, "minutes": minutes},
         )
 
     async def has_chat_plan(self, user_id, db: AsyncSession) -> bool:
