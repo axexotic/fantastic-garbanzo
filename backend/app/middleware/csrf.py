@@ -14,8 +14,12 @@ from starlette.responses import JSONResponse, Response
 # Safe methods that don't need CSRF protection
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
-# Paths exempt from CSRF (e.g. webhook callbacks from external services)
+# Paths exempt from CSRF (e.g. webhook callbacks, auth endpoints that run
+# before a CSRF cookie can exist)
 CSRF_EXEMPT_PATHS = {
+    "/api/auth/login",
+    "/api/auth/signup",
+    "/api/auth/refresh",
     "/api/payments/webhook",
     "/health",
     "/health/detailed",

@@ -76,14 +76,22 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS
+    # Middleware order matters — last added = outermost (runs first).
+    # CORS must be outermost so its headers are always present, even on 403s.
+
+    # CSRF protection (innermost)
+    app.add_middleware(CSRFMiddleware)
+
+    # Rate limiting
+    app.add_middleware(RateLimitMiddleware)
+
+    # CORS (outermost — added last, runs first)
     origins = [
         settings.frontend_url,
         "http://localhost:3000",
         "https://flaskai.xyz",
         "https://www.flaskai.xyz",
     ]
-    # Deduplicate
     origins = list(dict.fromkeys(origins))
     app.add_middleware(
         CORSMiddleware,
@@ -92,12 +100,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Rate limiting
-    app.add_middleware(RateLimitMiddleware)
-
-    # CSRF protection
-    app.add_middleware(CSRFMiddleware)
 
     # Routers
     app.include_router(health.router)
