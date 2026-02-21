@@ -232,12 +232,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
     Main WebSocket — handles chat, presence, and voice translation.
     Authenticates via JWT token in the URL or via access_token cookie.
     """
+    # Accept the connection first — rejecting before accept() causes HTTP 403
+    await websocket.accept()
+
     # Authenticate — try URL token first, then cookie
     if not token:
         token = websocket.cookies.get("access_token", "")
     payload = decode_access_token(token) if token else None
     if not payload:
-        await websocket.close(code=4001, reason="Invalid token")
+        await websocket.send_json({"type": "error", "data": "auth_failed"})
+        await websocket.close(code=4001, reason="Invalid or expired token")
         return
 
     user_id = payload["sub"]
@@ -247,6 +251,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         if not user:
+            await websocket.send_json({"type": "error", "data": "user_not_found"})
             await websocket.close(code=4001, reason="User not found")
             return
         username = user.username

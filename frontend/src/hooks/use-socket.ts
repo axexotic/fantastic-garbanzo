@@ -118,10 +118,21 @@ export function useSocket() {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       wsRef.current = null;
-      console.log("🔌 WebSocket disconnected, reconnecting in 3s...");
-      reconnectRef.current = setTimeout(connect, 3000);
+      if (event.code === 4001) {
+        // Token expired — refresh before reconnecting
+        console.log("🔑 WS auth failed, refreshing token...");
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        }).finally(() => {
+          reconnectRef.current = setTimeout(connect, 1000);
+        });
+      } else {
+        console.log("🔌 WebSocket disconnected, reconnecting in 3s...");
+        reconnectRef.current = setTimeout(connect, 3000);
+      }
     };
 
     ws.onerror = (err) => {

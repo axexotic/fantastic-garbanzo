@@ -98,7 +98,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         httponly=True,
         secure=is_prod,
         samesite="lax",
-        max_age=15 * 60,  # 15 minutes
+        max_age=60 * 60,  # 1 hour
         path="/",
     )
     response.set_cookie(
