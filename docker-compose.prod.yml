@@ -1,22 +1,7 @@
 # Docker Compose — Production deployment
-# Full stack: PostgreSQL, Redis, Backend, Frontend, Nginx (SSL)
+# Backend, Frontend, Nginx (SSL) — PostgreSQL on AWS RDS
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: voicetranslate
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     restart: always
@@ -46,8 +31,6 @@ services:
     restart: always
     env_file: .env
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -93,5 +76,4 @@ services:
       - ./certbot/www:/var/www/certbot
 
 volumes:
-  postgres_data:
   redis_data:

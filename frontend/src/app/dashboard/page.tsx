@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuthStore, useChatStore, useFriendsStore, useCallStore } from "@/lib/store";
-import { chats as chatsApi, friends as friendsApi, voice as voiceApi } from "@/lib/api";
+import { chats as chatsApi, friends as friendsApi, voice as voiceApi, preferences as prefsApi } from "@/lib/api";
 import { useSocket } from "@/hooks/use-socket";
 import { ChatList } from "@/components/chat-list";
 import { ChatView } from "@/components/chat-view";
@@ -27,7 +27,7 @@ type SidePanel = "chats" | "friends" | "settings";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isLoading, loadFromStorage, logout } = useAuthStore();
+  const { user, isLoading, loadFromServer, logout } = useAuthStore();
   const { chats, setChats, activeChatId, setActiveChat } = useChatStore();
   const { setFriends, setIncomingRequests } = useFriendsStore();
   const { incomingCall, setIncomingCall } = useCallStore();
@@ -37,10 +37,10 @@ export default function DashboardPage() {
   const [showNewChat, setShowNewChat] = useState(false);
   const [showVoiceSetup, setShowVoiceSetup] = useState(false);
 
-  // Auth check
+  // Auth check — load user from server via cookie
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    loadFromServer();
+  }, [loadFromServer]);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -70,32 +70,41 @@ export default function DashboardPage() {
     loadData();
   }, [user, setChats, setFriends, setIncomingRequests]);
 
-  // Check voice profile after login
+  // Check voice profile after login — using DB preferences
   useEffect(() => {
     if (!user) return;
 
     const checkVoiceProfile = async () => {
-      // Check if user has skipped voice setup before
-      const skipped = localStorage.getItem("voice_setup_skipped");
-      const hasSeenSetup = localStorage.getItem("voice_setup_seen");
-
-      if (skipped || hasSeenSetup) return;
-
       try {
-        // Check if voice profile exists
-        await voiceApi.getProfile();
-        // Profile exists, no need to show setup
-      } catch (err) {
-        // No voice profile - show setup modal for first-time users
-        setShowVoiceSetup(true);
-        localStorage.setItem("voice_setup_seen", "true");
+        // Check if user has already seen or skipped voice setup (from DB)
+        const prefs = await prefsApi.get();
+        if (prefs.voice_setup_skipped || prefs.voice_setup_seen) return;
+
+        try {
+          // Check if voice profile exists
+          await voiceApi.getProfile();
+          // Profile exists, no need to show setup
+        } catch (err) {
+          // No voice profile - show setup modal for first-time users
+          setShowVoiceSetup(true);
+          // Mark as seen in DB
+          await prefsApi.update({ voice_setup_seen: true });
+        }
+      } catch {
+        // Preferences endpoint failed — skip silently
       }
     };
 
     checkVoiceProfile();
   }, [user]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { auth: authApi } = await import("@/lib/api");
+      await authApi.logout();
+    } catch {
+      // Ignore — clear state regardless
+    }
     logout();
     router.push("/");
   };

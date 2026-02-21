@@ -1,6 +1,6 @@
 /**
  * API client — typed fetch wrapper for the backend.
- * Supports Bearer token auth (backward compat) + HTTP-only cookie auth + CSRF.
+ * Uses HTTP-only cookie auth + CSRF. Zero localStorage.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -39,11 +39,8 @@ async function tryRefreshToken(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) return false;
-      const data = await res.json();
-      // Update localStorage token for backward compat
-      if (data.token && typeof window !== "undefined") {
-        localStorage.setItem("token", data.token);
-      }
+      await res.json();
+      // Cookie is refreshed automatically by the backend
       return true;
     } catch {
       return false;
@@ -59,17 +56,10 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   // Attach CSRF token for state-changing requests
   const method = (options.method || "GET").toUpperCase();
@@ -83,19 +73,14 @@ async function request<T>(
   let res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
-    credentials: "include", // Send cookies
+    credentials: "include", // Send cookies (HTTP-only auth)
   });
 
   // If 401 and we have a refresh cookie, try refreshing
   if (res.status === 401 && path !== "/api/auth/refresh" && path !== "/api/auth/login") {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
-      // Retry the original request with the new token
-      const newToken =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (newToken) {
-        headers["Authorization"] = `Bearer ${newToken}`;
-      }
+      // Retry the original request — cookies are updated automatically
       res = await fetch(`${API_URL}${path}`, {
         ...options,
         headers,
@@ -152,12 +137,9 @@ export const auth = {
   refresh: () => request<{ token: string }>("/api/auth/refresh", { method: "POST" }),
 
   uploadAvatar: async (file: File): Promise<{ avatar_url: string; user: UserProfile }> => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const formData = new FormData();
     formData.append("file", file);
     const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     const csrf = getCsrfToken();
     if (csrf) headers["X-CSRF-Token"] = csrf;
 
@@ -359,16 +341,17 @@ export const voice = {
     request<VoiceProfile>("/api/voice/profile"),
 
   cloneVoice: async (audioBlob: Blob): Promise<VoiceProfile> => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
     const formData = new FormData();
     formData.append("audio_file", audioBlob, "voice_sample.wav");
+    const headers: Record<string, string> = {};
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
 
     const res = await fetch(`${API_URL}/api/voice/clone`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
       body: formData,
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -615,6 +598,9 @@ export interface UserPreferences {
   echo_cancellation: boolean;
   noise_suppression: boolean;
   auto_gain_control: boolean;
+  // Voice setup flags
+  voice_setup_seen: boolean;
+  voice_setup_skipped: boolean;
 }
 
 export const preferences = {

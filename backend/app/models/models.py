@@ -385,6 +385,10 @@ class UserPreference(Base):
     noise_suppression = Column(Boolean, default=True)
     auto_gain_control = Column(Boolean, default=True)
 
+    # Voice setup flags (moved from localStorage)
+    voice_setup_seen = Column(Boolean, default=False)
+    voice_setup_skipped = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

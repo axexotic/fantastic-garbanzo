@@ -8,11 +8,11 @@ import Link from "next/link";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isLoading, loadFromStorage } = useAuthStore();
+  const { user, isLoading, loadFromServer } = useAuthStore();
 
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    loadFromServer();
+  }, [loadFromServer]);
 
   useEffect(() => {
     if (!isLoading && user) {

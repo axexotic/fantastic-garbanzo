@@ -220,14 +220,22 @@ async def notify_group_update(
 
 # ─── Main WebSocket Endpoint ───────────────────────────────
 
+@router.websocket("/ws")
+async def websocket_endpoint_cookie(websocket: WebSocket):
+    """Cookie-based WebSocket — reads access_token from cookies."""
+    await websocket_endpoint(websocket, token="")
+
+
 @router.websocket("/ws/{token}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
+async def websocket_endpoint(websocket: WebSocket, token: str = ""):
     """
     Main WebSocket — handles chat, presence, and voice translation.
-    Authenticates via JWT token in the URL.
+    Authenticates via JWT token in the URL or via access_token cookie.
     """
-    # Authenticate
-    payload = decode_access_token(token)
+    # Authenticate — try URL token first, then cookie
+    if not token:
+        token = websocket.cookies.get("access_token", "")
+    payload = decode_access_token(token) if token else None
     if not payload:
         await websocket.close(code=4001, reason="Invalid token")
         return

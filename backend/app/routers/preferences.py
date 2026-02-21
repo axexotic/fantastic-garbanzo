@@ -43,6 +43,9 @@ class PreferencesResponse(BaseModel):
     echo_cancellation: bool = True
     noise_suppression: bool = True
     auto_gain_control: bool = True
+    # Voice setup flags
+    voice_setup_seen: bool = False
+    voice_setup_skipped: bool = False
 
 
 class UpdatePreferencesRequest(BaseModel):
@@ -69,6 +72,8 @@ class UpdatePreferencesRequest(BaseModel):
     echo_cancellation: bool | None = None
     noise_suppression: bool | None = None
     auto_gain_control: bool | None = None
+    voice_setup_seen: bool | None = None
+    voice_setup_skipped: bool | None = None
 
 
 def _pref_to_dict(pref: UserPreference) -> dict:
@@ -96,6 +101,8 @@ def _pref_to_dict(pref: UserPreference) -> dict:
         "echo_cancellation": pref.echo_cancellation,
         "noise_suppression": pref.noise_suppression,
         "auto_gain_control": pref.auto_gain_control,
+        "voice_setup_seen": pref.voice_setup_seen,
+        "voice_setup_skipped": pref.voice_setup_skipped,
     }
 
 

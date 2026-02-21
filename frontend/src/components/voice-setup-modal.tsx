@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Mic, Volume2, Globe, Sparkles, ChevronRight, Loader2, CheckCircle2, Shield } from "lucide-react";
 import { VoiceRecorder } from "./voice-recorder";
-import { voice as voiceApi } from "@/lib/api";
+import { voice as voiceApi, preferences as prefsApi } from "@/lib/api";
 import Link from "next/link";
 
 interface VoiceSetupModalProps {
@@ -33,9 +33,13 @@ export function VoiceSetupModal({ onClose, onComplete }: VoiceSetupModalProps) {
     }
   };
 
-  const handleSkip = () => {
-    // Save that user skipped voice setup
-    localStorage.setItem("voice_setup_skipped", "true");
+  const handleSkip = async () => {
+    // Save that user skipped voice setup in DB
+    try {
+      await prefsApi.update({ voice_setup_skipped: true });
+    } catch {
+      // Ignore — close regardless
+    }
     onClose();
   };
 

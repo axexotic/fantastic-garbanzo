@@ -2,7 +2,8 @@
  * WebSocket hook for real-time chat, presence, and notifications.
  *
  * Uses refs for state-dependent values so the connect callback
- * only changes when the token changes, preventing reconnect loops.
+ * stays stable, preventing reconnect loops.
+ * Auth: cookies are sent during the WS upgrade handshake.
  */
 
 "use client";
@@ -19,7 +20,7 @@ export function useSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const handlersRef = useRef<Map<string, Set<MessageHandler>>>(new Map());
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
-  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   const incrementUnread = useChatStore((s) => s.incrementUnread);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const updateFriendStatus = useFriendsStore((s) => s.updateFriendStatus);
@@ -43,10 +44,11 @@ export function useSocket() {
   useEffect(() => { updateParticipantCountRef.current = updateParticipantCount; }, [updateParticipantCount]);
 
   const connect = useCallback(() => {
-    if (!token) return;
+    if (!user) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/${token}`);
+    // Connect to cookie-based WS endpoint — cookies sent in upgrade handshake
+    const ws = new WebSocket(`${WS_URL}/ws`);
 
     ws.onopen = () => {
       console.log("🔌 WebSocket connected");
@@ -127,7 +129,7 @@ export function useSocket() {
     };
 
     wsRef.current = ws;
-  }, [token]); // only reconnect when token changes
+  }, [user]); // reconnect when user changes (login/logout)
 
   const disconnect = useCallback(() => {
     if (reconnectRef.current) {

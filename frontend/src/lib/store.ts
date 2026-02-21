@@ -1,5 +1,6 @@
 /**
  * Global stores — auth, chats, friends.
+ * Zero localStorage — auth state comes from HTTP-only cookies + /api/auth/me.
  */
 
 import { create } from "zustand";
@@ -9,23 +10,19 @@ import type { UserProfile, ChatPreview, FriendBrief, IncomingRequest } from "./a
 
 interface AuthState {
   user: UserProfile | null;
-  token: string | null;
   isLoading: boolean;
-  setAuth: (user: UserProfile, token: string) => void;
+  setAuth: (user: UserProfile) => void;
   updateUser: (data: Partial<UserProfile>) => void;
   logout: () => void;
-  loadFromStorage: () => void;
+  loadFromServer: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
   isLoading: true,
 
-  setAuth: (user, token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-    set({ user, token, isLoading: false });
+  setAuth: (user) => {
+    set({ user, isLoading: false });
   },
 
   updateUser: (data) =>
@@ -34,23 +31,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     })),
 
   logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    set({ user: null, token: null, isLoading: false });
+    set({ user: null, isLoading: false });
   },
 
-  loadFromStorage: () => {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        set({ user, token, isLoading: false });
-      } catch {
-        set({ isLoading: false });
-      }
-    } else {
-      set({ isLoading: false });
+  loadFromServer: async () => {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { auth } = await import("./api");
+      const user = await auth.me();
+      set({ user, isLoading: false });
+    } catch {
+      // Not authenticated or server error
+      set({ user: null, isLoading: false });
     }
   },
 }));
